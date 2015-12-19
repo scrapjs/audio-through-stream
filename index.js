@@ -13,6 +13,7 @@ var find = require('array-find');
 var inherits = require('inherits');
 var extend = require('xtend/mutable');
 var isPromise = require('is-promise');
+var AudioBuffer = require('audio-buffer');
 
 
 module.exports = AudioNode;
@@ -24,7 +25,9 @@ module.exports = AudioNode;
 function AudioNode (options) {
 	if (!(this instanceof AudioNode)) return new AudioNode(options);
 
-	Transform.call(this);
+	var self = this;
+
+	Transform.call(self);
 
 	//passed data count
 	// this.count = 0;
@@ -37,6 +40,38 @@ function AudioNode (options) {
 
 	// //table of scheduled events
 	// this._schedule = [];
+
+	//redefine _process method
+	if (options instanceof Function) {
+		options = {_process: options};
+	}
+
+	//obtain correct format
+	extend(self, options);
+	pcm.normalizeFormat(self);
+
+
+	//store pipe-ins
+	self.inputsCount = 0;
+	self
+	.on('pipe', function () {
+		self.inputsCount++
+	})
+	.on('unpipe', function () {
+		self.inputsCount--
+	});
+
+	//store pipe-outs
+	Object.defineProperties(self, {
+		outputsCount: {
+			get: function () {
+				return this._readableState.pipesCount
+			},
+			set: function (value) {
+				throw Error('outputsCount is read-only');
+			}
+		}
+	});
 }
 
 
@@ -211,9 +246,7 @@ AudioNode.prototype.getTimeData
  * Basically provides a chunk with data and expects user to fill that.
  * If returned a promise, then will wait till it is resolved.
  */
-AudioNode.prototype._process = function (buffer) {
-	return buffer;
-};
+AudioNode.prototype._process = function (buffer) {};
 
 
 /**
@@ -222,7 +255,10 @@ AudioNode.prototype._process = function (buffer) {
 AudioNode.prototype._callProcess = function (buffer, cb) {
 	var self = this;
 
-	var result = self._process(buffer);
+	//convert buffer to array
+	var data = new AudioBuffer(buffer, this);
+
+	var result = self._process(data);
 
 	//if returned a promise - wait
 	if (isPromise(result)) {
@@ -230,7 +266,11 @@ AudioNode.prototype._callProcess = function (buffer, cb) {
 			throw err;
 		});
 	}
-	//or invoke instantly
+	//if nothing returned - ignore change
+	else if (result === undefined) {
+		cb(buffer);
+	}
+	//if returned buffer/array/etc - invoke instantly
 	else {
 		cb(result);
 	}
@@ -243,7 +283,7 @@ AudioNode.prototype._callProcess = function (buffer, cb) {
 AudioNode.prototype._transform = function (chunk, enc, cb) {
 	var self = this;
 	self._callProcess(chunk, function (chunk) {
-		cb(null, chunk);
+		cb(null, chunk.rawData);
 	});
 };
 
@@ -251,25 +291,23 @@ AudioNode.prototype._transform = function (chunk, enc, cb) {
 /**
  * Generator method
  */
-//TODO: fix this
-// AudioNode.prototype._read = function (size) {
-// 	var self = this;
+AudioNode.prototype._read = function (size) {
+	var self = this;
 
-// 	//if no inputs but are outputs - be a generator
-// 	if (!self._writableState.pipesCount && self._readableState.pipesCount) {
-// 		//generate new chunk with silence
-// 		var chunk = new Buffer(0);
-// 		self._callProcess(chunk, function (chunk) {
-// 			self.push(chunk);
-// 		});
-// 	}
+	//if no inputs but are outputs - be a generator
+	if (!self.inputsCount && self.outputsCount) {
+		//generate new chunk with silence
+		var chunk = new Buffer(this.samplesPerFrame);
+		self._callProcess(chunk, function (chunk) {
+			self.push(chunk.rawData);
+		});
+	}
 
-// 	//else be a transformer
-// 	else {
-// 		console.log(123)
-// 		Transform.prototype._read.call(this, size);
-// 	}
-// };
+	//else be a transformer
+	else {
+		Transform.prototype._read.call(this, size);
+	}
+};
 
 
 /**
@@ -277,8 +315,9 @@ AudioNode.prototype._transform = function (chunk, enc, cb) {
  */
 AudioNode.prototype._write = function (chunk, enc, cb) {
 	var self = this;
+
 	//if no outputs but some inputs - be a sink
-	if (!self._readableState.pipesCount && self._writableState.pipesCount) {
+	if (!self.outputsCount && self.inputsCount) {
 		self._callProcess(chunk, cb);
 		self.emit('data', chunk);
 	}
