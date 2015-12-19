@@ -12,7 +12,8 @@ var Speaker = require('speaker');
 AudioNode(function (buffer) {
 	var samplesNumber = 1024;
 	for (var i = 0; i < samplesNumber; i++) {
-		buffer.push(Math.random() * 2 - 1);
+		buffer.set(0, i, Math.random() * 2 - 1);
+		buffer.set(1, i, Math.random() * 2 - 1);
 	}
 
 	return buffer;
@@ -26,7 +27,7 @@ AudioNode(function (buffer) {
 }))
 //transformer
 .pipe(AudioNode(function (buffer) {
-	return buffer.format({
+	return buffer.toFormat({
 		signed: true,
 		float: false,
 		bitDepth: 16,
