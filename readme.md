@@ -53,15 +53,15 @@ var audioNode = new AudioNode({
 		//number of sample-frames processed
 		this.count;
 
-		//time of the current chunk
-		this.time;
+		//If time of the current chunk is more than 3s, stop generation
+		if (this.time > 3) this.end();
 	}
 });
 
 //End stream
 audioNode.end();
 
-//Stop processing
+//Pause processing
 audioNode.pause();
 
 //Continue processing
