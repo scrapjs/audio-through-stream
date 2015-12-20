@@ -41,7 +41,7 @@ AudioNode(function (buffer) {
 ## API
 
 ```js
-//create new audio node instance with passed options
+//Create new audio node instance with passed options
 var audioNode = new AudioNode({
 	//processor function, can be passed to constructor instead of options, as in usage examples
 	_process: function (buffer) {
@@ -49,8 +49,23 @@ var audioNode = new AudioNode({
 		//Return processed audio buffer
 		//or promise (object with .then method) to process asynchronously.
 		//If no return, the input buffer will be returned automatically as pass-through.
+
+		//number of sample-frames processed
+		this.count;
+
+		//time of the current chunk
+		this.time;
 	}
 });
+
+//End stream
+audioNode.end();
+
+//Stop processing
+audioNode.pause();
+
+//Continue processing
+audioNode.resume();
 ```
 
 ## Related

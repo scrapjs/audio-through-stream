@@ -30,10 +30,10 @@ function AudioNode (options) {
 	Transform.call(self);
 
 	//passed data count
-	// this.count = 0;
+	this.count = 0;
 
-	// //current processing time
-	// this.time = 0;
+	//current processing time
+	this.time = 0;
 
 	// //table of planned time events
 	// this._plan = [];
@@ -72,6 +72,9 @@ function AudioNode (options) {
 			}
 		}
 	});
+
+	//set state active
+	self.state = 'active';
 }
 
 
@@ -100,11 +103,15 @@ extend(AudioNode.prototype, pcm.defaultFormat);
 
 
 /**
- * Current state of audio node
+ * Current state of audio node, instead of a bunch of flags.
  *
- * undefined
- * processing/waiting?
+ * paused
+ * muted
+ * ended
  * error
+ *
+ *
+ * processing/waiting?
  * limit
  * muted/solo?
  * playing?
@@ -171,7 +178,7 @@ AudioNode.prototype.cancel = function (time, cb) {
 /**
  * Plan playing at a time, or now
  */
-AudioNode.prototype.start = function (time) {
+AudioNode.prototype.resume = function (time) {
 
 };
 
@@ -179,8 +186,29 @@ AudioNode.prototype.start = function (time) {
 /**
  * Stop playing at a time, or now
  */
-AudioNode.prototype.stop = function (time) {
+AudioNode.prototype.pause = function (time) {
+	var self = this;
 
+	self.state = 'paused';
+};
+
+
+/**
+ * Close audio node with final passed audiobuffer.
+ * Overrides stream’s end.
+ *
+ * @param {AudioBuffer} chunk AudioBuffer instance with data
+ */
+AudioNode.prototype.end = function (chunk) {
+	var self = this;
+
+	//set state
+	self.state = 'ended';
+
+	if (!(chunk instanceof AudioBuffer)) chunk = AudioBuffer(chunk);
+
+	Transform.prototype.end.call(this, chunk.rawData);
+	console.log('end')
 };
 
 
@@ -241,6 +269,8 @@ AudioNode.prototype.getFrequencyData
 AudioNode.prototype.getTimeData
 
 
+
+
 /**
  * Processing method, supposed to be overridden.
  * Basically provides a chunk with data and expects user to fill that.
@@ -256,24 +286,33 @@ AudioNode.prototype._callProcess = function (buffer, cb) {
 	var self = this;
 
 	//convert buffer to array
-	var data = new AudioBuffer(buffer, this);
+	var data = AudioBuffer(buffer, this);
 
 	var result = self._process(data);
 
 	//if returned a promise - wait
 	if (isPromise(result)) {
-		result.then(cb, function (err) {
+		result.then(function (chunk) {
+			chunk = AudioBuffer(chunk);
+
+			cb(chunk.rawData);
+
+			self.count += chunk.length;
+			self.time = self.count / self.sampleRate;
+		}, function (err) {
 			throw err;
 		});
+
+		return;
 	}
-	//if nothing returned - ignore change
-	else if (result === undefined) {
-		cb(buffer);
-	}
-	//if returned buffer/array/etc - invoke instantly
-	else {
-		cb(result);
-	}
+
+	//fall back to result
+	result = result === undefined ? buffer : (result instanceof AudioBuffer) ? result : AudioBuffer(result);
+
+	cb(result.rawData);
+
+	self.count += result.length;
+	self.time = self.count / self.sampleRate;
 };
 
 
@@ -283,7 +322,7 @@ AudioNode.prototype._callProcess = function (buffer, cb) {
 AudioNode.prototype._transform = function (chunk, enc, cb) {
 	var self = this;
 	self._callProcess(chunk, function (chunk) {
-		cb(null, chunk.rawData);
+		cb(null, chunk);
 	});
 };
 
@@ -297,9 +336,9 @@ AudioNode.prototype._read = function (size) {
 	//if no inputs but are outputs - be a generator
 	if (!self.inputsCount && self.outputsCount) {
 		//generate new chunk with silence
-		var chunk = new Buffer(this.samplesPerFrame);
+		var chunk = new Buffer(self.samplesPerFrame);
 		self._callProcess(chunk, function (chunk) {
-			self.push(chunk.rawData);
+			self.push(chunk);
 		});
 	}
 
