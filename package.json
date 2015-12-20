@@ -1,6 +1,6 @@
 {
   "name": "audio-node",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Generic audio processing stream class",
   "main": "index.js",
   "scripts": {
