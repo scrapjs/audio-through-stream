@@ -1,23 +1,36 @@
-var AudioNode = require('./');
+var Through = require('./');
 // var Source = require('audio-source');
 // var Speaker = require('audio-speaker');
 var Sink = require('audio-sink');
 var AudioBuffer = require('audio-buffer');
 var util = require('audio-buffer-utils');
-// var Generator = require('audio-generator');
+var Generator = require('audio-generator');
+// var test = it;
 var test = require('tst').only();
 
 
-test('PassThrough', function (done) {
-	Generator({duration: 0.5 })
-	.pipe(Node())
-	.pipe(Sink())
-	.on('end', done);
+test.only('PassThrough', function (done) {
+	Through(function (input) {
+		if (this.time > 0.1) {
+			this.end();
+		}
+	})
+	.on('end', done)
+	.pipe(Through())
+	.pipe(Through(function () {
+		// this.end();
+	}))
+	.pipe(Through(function (input) {
+		return input
+	}))
+	.pipe(Sink(function (data) {
+		console.log(data.length)
+	}));
 });
 
-test.only('Source', function (done) {
+test('Source', function (done) {
 	//weird-saw wave generator
-	AudioNode(function (input) {
+	Through(function (input) {
 		var len = 1024;
 
 		util.fill(input, function (value, channel, idx) {
@@ -31,9 +44,7 @@ test.only('Source', function (done) {
 			this.end(input);
 		}
 	})
-	.on('end', function (x) {
-		done();
-	})
+	.on('end', done)
 	.pipe(Sink(function (data) {
 		// console.log('fin', data.length)
 	}))
@@ -45,7 +56,11 @@ test('Processor', function () {
 });
 
 test('Destination', function () {
+	Through(function (input) {
 
+	}).pipe(Through(function (input) {
+
+	}));
 });
 
 test('WebAudioNode', function () {

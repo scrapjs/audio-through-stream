@@ -14,6 +14,7 @@ var isPromise = require('is-promise');
 var context = require('audio-context');
 var AudioBuffer = require('audio-buffer');
 var isAudioBuffer = require('is-audio-buffer');
+var getUid = require('get-uid');
 
 
 module.exports = AudioNode;
@@ -34,6 +35,10 @@ function AudioNode (options) {
 		readableObjectMode: true,
 		writableObjectMode: true
 	});
+
+	//just get unique id
+	this._id = getUid();
+	console.log('create', this._id)
 
 	//passed data count
 	this.count = 0;
@@ -245,25 +250,40 @@ AudioNode.prototype.state = undefined;
 AudioNode.prototype.end = function (chunk, cb) {
 	var self = this;
 
-	//set state
-	self.state = 'ended';
+	//FIXME quite ugly check.
+	//`Transform.prototype.end` below calls `end` for all the further piped streams
+	//and if they are also audio-through, they have non-zero `inputCount`
+	//but the cannot be called `end` as such
+	if (self.inputsCount) {
+		if (self._processCb) {
+			return self.error('Cannot end non-source stream.');
+		}
+	}
 
 	//release callback, if any
 	self._handleResult(chunk);
 
+	//set state
+	self.state = 'ended';
 	Transform.prototype.end.call(this);
+
+	return self;
 };
 
 
 /**
  * Throw inobstructive error
  */
-// AudioNode.prototype.error = function (error) {
-// 	//ensure error format
-// 	error = error instanceof Error ? error : Error(error);
+AudioNode.prototype.error = function (error) {
+	var self = this;
 
-// 	throw error;
-// };
+	//ensure error format
+	error = error instanceof Error ? error : Error(error);
+
+	console.error('Stream #' + self._id + ': ' + error.message);
+
+	return self;
+};
 
 
 /**
@@ -307,24 +327,13 @@ AudioNode.prototype._callProcess = function (buffer, cb) {
 
 	//save awaiting cb
 	self._processCb = cb;
+	self._processBuffer = buffer;
 
 	//send buffer to processor
 	var result = self._process(buffer);
 
-	//if no return - then user is wisely just modified input buffer
-	if (result === undefined) {
-		result = buffer;
-	}
-
-	//if returned a promise - wait
-	if (isPromise(result)) {
-		result.then(function (result) {
-			self._handleResult(result);
-		}, self.error);
-	}
-	else {
-		self._handleResult(result);
-	}
+	//handle the result
+	self._handleResult(result);
 };
 
 
@@ -334,14 +343,28 @@ AudioNode.prototype._callProcess = function (buffer, cb) {
 AudioNode.prototype._handleResult = function (result) {
 	var self = this;
 
-	if (self._processCb) {
-		//if the state changed during the processing, like, end called - ignore cb
-		//FIXME: test out other cases here, not only `ended` state
-		if (self.state !== 'normal') {
-			//release callback
-			return;
-		}
+	//if no return - then user is wisely just modified input buffer
+	if (!result) {
+		result = self._processBuffer;
+	}
 
+	//if returned a promise - wait
+	if (isPromise(result)) {
+		result.then(function (result) {
+			self._handleResult(result);
+		}, self.error);
+
+		return;
+	}
+
+	//if the state changed during the processing, like, end called - ignore cb
+	//FIXME: test out other cases here, not only `ended` state
+	if (self.state !== 'normal') {
+		//release callback
+		return;
+	}
+
+	if (self._processCb) {
 		//TODO: detect whether we need to cast audioBuffer to buffer (connected 2 at least one plain stream)
 		// if (isAudioBuffer(result)) result = pcm.toBuffer(result, self.format);
 
@@ -351,10 +374,14 @@ AudioNode.prototype._handleResult = function (result) {
 		self._processCb = null;
 	}
 
+	self._processBuffer = null;
+
 
 	//update counters
-	self.count += result.length / self.channels;
-	self.time = self.count / self.sampleRate;
+	if (result) {
+		self.count += result.length / self.channels;
+		self.time = self.count / self.sampleRate;
+	}
 };
 
 
@@ -363,6 +390,10 @@ AudioNode.prototype._handleResult = function (result) {
  */
 AudioNode.prototype._transform = function (chunk, enc, cb) {
 	var self = this;
+
+	//ignore bad states
+	if (self.state !== 'normal') return;
+
 	self._callProcess(chunk, function (chunk) {
 		cb(null, chunk);
 	});
@@ -401,6 +432,9 @@ AudioNode.prototype._read = function (size) {
  */
 AudioNode.prototype._write = function (chunk, enc, cb) {
 	var self = this;
+
+	//ignore bad states (like, ended in between)
+	if (self.state !== 'normal') return;
 
 	//if no outputs but some inputs - be a sink
 	if (!self.outputsCount && self.inputsCount) {
