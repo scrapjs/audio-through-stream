@@ -1,4 +1,5 @@
-Audio-node is a generic stream class for any audio-processing tasks: generation of audio-stream, processing, output, analysis, conversion etc.
+Streams-based [AudioNode](https://developer.mozilla.org/en-US/docs/Web/API/AudioNode) implementation. Useful both as stream and web audio node.
+
 
 ## Usage
 
@@ -7,31 +8,27 @@ Audio-node is a generic stream class for any audio-processing tasks: generation 
 ```js
 var AudioNode = require('audio-node');
 var Speaker = require('speaker');
+var util = require('audio-buffer-utils');
+var AudioBuffer = require('audio-buffer');
 
 //generator
-AudioNode(function (buffer) {
-	var samplesNumber = 1024;
-	for (var i = 0; i < samplesNumber; i++) {
-		buffer.set(0, i, Math.random() * 2 - 1);
-		buffer.set(1, i, Math.random() * 2 - 1);
-	}
+AudioNode(function (e) {
+	var buffer = new AudioBuffer(1024);
+
+	//create noise
+	util.fill(buffer, function () {
+		return Math.random() * 2 - 1;
+	});
 
 	return buffer;
 })
 //processor
-.pipe(AudioNode(function (buffer) {
+.connect(AudioNode(function (buffer) {
 	var volume = 0.2;
-	return buffer.map(function (sample) {
+
+	//change noise value
+	return util.map(buffer, function (sample) {
 		return sample * volume;
-	});
-}))
-//transformer
-.pipe(AudioNode(function (buffer) {
-	return buffer.toFormat({
-		signed: true,
-		float: false,
-		bitDepth: 16,
-		channels: 2
 	});
 }))
 //output
@@ -58,14 +55,26 @@ var audioNode = new AudioNode({
 	}
 });
 
-//End stream
-audioNode.end();
+//End stream, optionally sending final data
+audioNode.end(buffer?);
 
 //Pause processing
 audioNode.pause();
 
 //Continue processing
 audioNode.resume();
+
+//Throw error, not breaking the pipe
+audioNode.error(error|string);
+
+//Current state: active, paused, ended, muted, error
+audioNode.state;
+
+//Connect to other AudioNode — pass own AudioBuffer to the next AudioNode
+audioNode.connect(audioCtx.destination);
+
+//Pipe to stream — transform own AudioBuffer to Buffer
+audioNode.pipe(speaker);
 ```
 
 ## Related
