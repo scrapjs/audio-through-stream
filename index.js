@@ -38,9 +38,13 @@ function AudioNode (processor, options) {
 	//save started processing time
 	self._creationTime = now();
 
-	//we need object mode to share passed AudioBuffer between piped streams
 	Transform.call(self, {
-		objectMode: true
+		//we need object mode to share passed AudioBuffer between piped streams
+		objectMode: true,
+
+		//to keep processing delays very short, in case if we need RT binding.
+		//otherwise stream will hoard data and release only when it’s full.
+		highWaterMark: 1
 	});
 
 	//just get unique id
@@ -197,7 +201,7 @@ AudioNode.prototype.state = undefined;
  */
 AudioNode.prototype.resume = function () {
 	var self = this;
-	self.log('resume');
+	// self.log('resume');
 
 	//NOTE: this method is used innerly as well, so we can’t really redefine it’s behaviour
 	//if (self.state !== 'paused') return //self.error('Cannot resume not paused stream.');
@@ -217,7 +221,7 @@ AudioNode.prototype.resume = function () {
  */
 AudioNode.prototype.pause = function (time) {
 	var self = this;
-	self.log('pause');
+	// self.log('pause');
 
 	//if (self.state !== 'normal') return //self.error('Cannot pause not active stream.');
 
@@ -350,6 +354,18 @@ AudioNode.prototype._process = function (buffer) {};
 AudioNode.prototype._callProcess = function (buffer, cb) {
 	var self = this;
 
+	//handle throttling
+	if (self.throttle) {
+		//if is paused - plan processing after being released
+		//FIXME: potential issue if lots of _callProcesses being called during the pause
+		if (self.state === 'paused') {
+			self.once('resume', function () {
+				self._callProcess(buffer, cb);
+			});
+			return self;
+		}
+	}
+
 	//ensure buffer is AudioBuffer
 	//FIXME: detect passed buffer format - not necessarily planar/2/etc
 	if (!isAudioBuffer(buffer)) buffer = pcm.toAudioBuffer(buffer, self);
@@ -363,6 +379,14 @@ AudioNode.prototype._callProcess = function (buffer, cb) {
 
 	//handle the result
 	self._handleResult(result);
+
+	//else - just set throttle flag for N ms, if required
+	if (self.throttle) {
+		self.pause();
+		setTimeout(function () {
+			self.resume();
+		}, self.throttle);
+	}
 };
 
 
@@ -388,7 +412,7 @@ AudioNode.prototype._handleResult = function (result) {
 
 	//if the state changed during the processing, like, end called - ignore cb
 	//FIXME: test out other cases here, not only `ended` state
-	if (self.state !== 'normal') {
+	if (self.state === 'ended') {
 		//release callback
 		return;
 	}
@@ -397,33 +421,8 @@ AudioNode.prototype._handleResult = function (result) {
 		//TODO: detect whether we need to cast audioBuffer to buffer (connected 2 at least one plain stream)
 		// if (isAudioBuffer(result)) result = pcm.toBuffer(result, self.format);
 
-		//ensure callback is called
-
-		//if is paused - plan release on resume
-		if (self.throttle) {
-			if (self.state === 'paused') {
-				self.on('resume', function () {
-					self.log('cb');
-					self._processCb(result);
-					self._processCb = null;
-				});
-			}
-			//set throttle flag for N ms
-			else {
-				self.pause();
-				self.log('cb');
-				self._processCb(result);
-				self._processCb = null;
-				setTimeout(function () {
-					self.resume();
-				}, self.throttle);
-			}
-		} else {
-			self.log('cb');
-			self._processCb(result);
-			self._processCb = null;
-		}
-
+		self._processCb(result);
+		self._processCb = null;
 	}
 
 	self._processBuffer = null;
@@ -458,7 +457,7 @@ AudioNode.prototype._transform = function (chunk, enc, cb) {
 AudioNode.prototype._read = function (size) {
 	var self = this;
 
-	self.log('_read')
+	// self.log('_read')
 
 	//ignore bad states
 	if (self.state === 'ended') {

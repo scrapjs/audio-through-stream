@@ -119,11 +119,14 @@ test.skip('error', function (done) {
 
 test.only('throttle', function (done) {
 	this.timeout(false);
-	var stream = Through(util.noise, {
+	var stream = Through(function (input) {
+		// console.log('Generated', this.time);
+		input.time = this.time;
+	}, {
 		throttle: 500
 	})
 	.pipe(Through(function (input) {
-		console.log('Received', input.length);
+		// console.log('Received', input.time);
 	}));
 });
 
