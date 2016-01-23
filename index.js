@@ -458,7 +458,7 @@ AudioNode.prototype._transform = function (chunk, enc, cb) {
 AudioNode.prototype._read = function (size) {
 	var self = this;
 
-	self.log('read')
+	self.log('_read')
 
 	//ignore bad states
 	if (self.state === 'ended') {
