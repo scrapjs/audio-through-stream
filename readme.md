@@ -1,36 +1,28 @@
-Streams-based [AudioNode](https://developer.mozilla.org/en-US/docs/Web/API/AudioNode) implementation. Useful both as stream and web audio node.
+Through stream for audio processing streams.
 
 
 ## Usage
 
-[![npm install audio-node](https://nodei.co/npm/audio-node.png?mini=true)](https://npmjs.org/package/audio-node/)
+[![npm install audio-through](https://nodei.co/npm/audio-through.png?mini=true)](https://npmjs.org/package/audio-through/)
 
 ```js
-var AudioNode = require('audio-node');
+var Through = require('audio-through');
 var Speaker = require('speaker');
 var util = require('audio-buffer-utils');
 var AudioBuffer = require('audio-buffer');
 
 //generator
-AudioNode(function (e) {
-	var buffer = new AudioBuffer(1024);
+Through(util.noise)
 
-	//create noise
-	util.fill(buffer, function () {
-		return Math.random() * 2 - 1;
-	});
-
-	return buffer;
-})
 //processor
-.connect(AudioNode(function (buffer) {
+.pipe(Through(function (buffer) {
 	var volume = 0.2;
 
-	//change noise value
 	return util.map(buffer, function (sample) {
 		return sample * volume;
 	});
 }))
+
 //output
 .pipe(Speaker());
 ```
@@ -39,21 +31,25 @@ AudioNode(function (e) {
 
 ```js
 //Create new audio node instance with passed options
-var audioNode = new AudioNode({
-	//processor function, can be passed to constructor instead of options, as in usage examples
-	_process: function (buffer) {
-		//buffer is an instance of AudioBuffer.
-		//Return processed audio buffer
-		//or promise (object with .then method) to process asynchronously.
-		//If no return, the input buffer will be returned automatically as pass-through.
+var audioNode = new Through(
+	//processing function
+	function (buffer) {
+		//buffer is an instance of AudioBuffer, used as input-output.
+		//if other buffer is returned, the returned value will replace the buffer.
+		//if a promise is returned, the stream will wait for it.
 
 		//number of sample-frames processed
 		this.count;
 
 		//If time of the current chunk is more than 3s, stop generation
 		if (this.time > 3) this.end();
+	},
+	//options
+	{
+		//process chunk each N ms
+		throttle: 0
 	}
-});
+);
 
 //End stream, optionally sending final data
 audioNode.end(buffer?);
@@ -67,16 +63,11 @@ audioNode.resume();
 //Throw error, not breaking the pipe
 audioNode.error(error|string);
 
-//Current state: active, paused, ended, muted, error
+//Current state: normal, paused, ended, muted, solo, error
 audioNode.state;
-
-//Connect to other AudioNode — pass own AudioBuffer to the next AudioNode
-audioNode.connect(audioCtx.destination);
-
-//Pipe to stream — transform own AudioBuffer to Buffer
-audioNode.pipe(speaker);
 ```
 
 ## Related
 
+> [audio-buffer-utils](https://npmjs.org/package/audio-buffer-utils) — set of utils for audio buffers processing.<br/>
 > [audio-buffer](https://github.com/audio-lab/buffer) — interface for any audio data holder.<br/>

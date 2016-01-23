@@ -1,15 +1,18 @@
 var Through = require('./');
+var ctx = require('audio-context');
 // var Source = require('audio-source');
 // var Speaker = require('audio-speaker');
 var Sink = require('audio-sink');
 var AudioBuffer = require('audio-buffer');
-var util = require('audio-buffer-utils');
+var util = require('../audio-buffer-utils');
+var pcm = require('pcm-util');
 var Generator = require('audio-generator');
+var isBrowser = require('is-browser');
 // var test = it;
 var test = require('tst').only();
 
 
-test.only('PassThrough', function (done) {
+test('PassThrough', function (done) {
 	Through(function (input) {
 		if (this.time > 0.1) {
 			this.end();
@@ -56,10 +59,49 @@ test('Processor', function () {
 });
 
 test('Destination', function () {
-	Through(function (input) {
 
-	}).pipe(Through(function (input) {
+});
 
+test('Speed regulation', function () {
+	if (!isBrowser) return;
+
+	/*
+	//create sound renderer
+	var sourceNode = ctx.createBufferSource();
+	sourceNode.loop = true;
+	sourceNode.buffer = new AudioBuffer(2, pcm.defaults.samplesPerFrame);
+	sourceNode.start();
+	var scriptNode = ctx.createScriptProcessor(pcm.defaults.samplesPerFrame);
+	scriptNode.onaudioprocess = function (e) {
+		if (!buf) {
+			//release blocking of the rendering stream.
+			stream.resume();
+		}
+
+		if (buf) {
+			//copy stream data (if any)
+			util.copy(buf, e.outputData);
+			buf = null;
+		}
+
+		stream.resume();
+	};
+	sourceNode.connect(scriptNode);
+	scriptNode.connect(ctx.destination);
+	*/
+
+	var buf;
+
+	//create pipe of sound processing streams with regulated speed
+	var stream = Through(util.noise, {
+		throttle: 1000
+	})
+	.pipe(Through(function (input) {
+		//to bind stream handling to the realtime,
+		//we need to defer pipe till the output is "thinking"
+		buf = input;
+
+		// self.pause();
 	}));
 });
 
@@ -75,8 +117,14 @@ test.skip('error', function (done) {
 
 });
 
-test('throttle', function () {
-
+test.only('throttle', function (done) {
+	this.timeout(false);
+	var stream = Through(util.noise, {
+		throttle: 500
+	})
+	.pipe(Through(function (input) {
+		console.log('Received', input.length);
+	}));
 });
 
 test('mute', function () {

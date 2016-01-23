@@ -15,9 +15,14 @@ var context = require('audio-context');
 var AudioBuffer = require('audio-buffer');
 var isAudioBuffer = require('is-audio-buffer');
 var getUid = require('get-uid');
+var now = require('performance-now');
+var chalk = require('chalk');
 
 
 module.exports = AudioNode;
+
+
+var streamCount = 0;
 
 
 /**
@@ -25,36 +30,39 @@ module.exports = AudioNode;
  *
  * @constructor
  */
-function AudioNode (options) {
-	if (!(this instanceof AudioNode)) return new AudioNode(options);
+function AudioNode (processor, options) {
+	if (!(this instanceof AudioNode)) return new AudioNode(processor, options);
 
 	var self = this;
 
+	//save started processing time
+	self._creationTime = now();
+
+	//we need object mode to share passed AudioBuffer between piped streams
 	Transform.call(self, {
-		objectMode: true,
-		readableObjectMode: true,
-		writableObjectMode: true
+		objectMode: true
 	});
 
 	//just get unique id
-	this._id = getUid();
-	console.log('create', this._id)
+	self._id = streamCount++;
+	self.log('create', self._id);
 
 	//passed data count
-	this.count = 0;
+	self.count = 0;
 
 	//current processing time
-	this.time = 0;
+	self.time = 0;
+
 
 	// //table of planned time events
-	// this._plan = [];
+	// self._plan = [];
 
 	// //table of scheduled events
-	// this._schedule = [];
+	// self._schedule = [];
 
 	//redefine _process method
-	if (options instanceof Function) {
-		options = {_process: options};
+	if (processor) {
+		self._process = processor;
 	}
 
 	//take over options
@@ -108,50 +116,19 @@ Object.defineProperties(AudioNode.prototype, {
 extend(AudioNode.prototype, pcm.defaults);
 
 
-/**
- * Update connection
- * If input is provided -
- */
-// AudioNode.prototype.updateConnection = function () {
-
-// };
-
-
-/**
- * Context for WAA
- */
-// AudioNode.prototype.context = context;
-
-
-/**
- * WAA-compatible method of connection AudioNodes.
- * Passes unchanged audiobuffer instead of pipe.
- */
-// AudioNode.prototype.connect = function (node) {
-// };
-
-
-/**
- *
- */
-// AudioNode.prototype.disconnect = function () {
-// };
-
 
 /**
  * Current state of audio node, spec + extended by the methods.
  *
  * normal
+ * paused
+ * ended
+ *
  * playing
  * connection
  * tail-time
- *
- * paused
  * muted
- * ended
  * error
- *
- *
  * processing/waiting?
  * limit?
  * solo?
@@ -216,20 +193,51 @@ AudioNode.prototype.state = undefined;
 
 
 /**
- * Plan playing at a time, or now
+ * Resume handling
  */
-// AudioNode.prototype.resume = function (time) {
-// };
+AudioNode.prototype.resume = function () {
+	var self = this;
+	self.log('resume');
+
+	//NOTE: this method is used innerly as well, so we can’t really redefine it’s behaviour
+	//if (self.state !== 'paused') return //self.error('Cannot resume not paused stream.');
+
+	self.state = 'normal';
+
+	Transform.prototype.resume.call(self);
+
+	self.emit('resume');
+
+	return self;
+};
 
 
 /**
- * Stop playing at a time, or now
+ * Pause handling
  */
-// AudioNode.prototype.pause = function (time) {
-// 	var self = this;
+AudioNode.prototype.pause = function (time) {
+	var self = this;
+	self.log('pause');
 
-// 	self.state = 'paused';
-// };
+	//if (self.state !== 'normal') return //self.error('Cannot pause not active stream.');
+
+	self.state = 'paused';
+
+	Transform.prototype.pause.call(self);
+
+	self.emit('pause');
+
+	return self;
+};
+
+
+/**
+ * Indicate whether it is paused (just overrides the Through’s method)
+ */
+AudioNode.prototype.isPaused = function (time) {
+	var self = this;
+	return self.state === 'paused';
+};
 
 
 /**
@@ -272,7 +280,7 @@ AudioNode.prototype.end = function (chunk, cb) {
 
 
 /**
- * Throw inobstructive error
+ * Throw inobstructive error. Does not stop stream.
  */
 AudioNode.prototype.error = function (error) {
 	var self = this;
@@ -280,9 +288,29 @@ AudioNode.prototype.error = function (error) {
 	//ensure error format
 	error = error instanceof Error ? error : Error(error);
 
-	console.error('Stream #' + self._id + ': ' + error.message);
+	console.error(self.pfx(), chalk.red(error.message));
 
 	return self;
+};
+
+
+/**
+ * Same as error, but for logging purposes
+ */
+AudioNode.prototype.log = function () {
+	var self = this;
+	var str = [].join.call(arguments, ' ');
+	console.log(self.pfx(), str);
+	return self;
+};
+
+
+/**
+ * Return prefix for logging
+ */
+AudioNode.prototype.pfx = function () {
+	var self = this;
+	return chalk.gray('#' + self._id + ' ' + (now() - self._creationTime).toFixed(0) + 'ms');
 };
 
 
@@ -301,10 +329,11 @@ AudioNode.prototype.error = function (error) {
 
 
 /**
- * Meditate for a processor tick between chunks
- * Needed to slow down generation etc
+ * Meditate for a processor tick each N ms.
+ * Needed to slow down sink performance - otherwise it will just flush all the data w/o pauses, which will block main thread.
+ * Also useful for debugging, where you want to see the chunk data. Just set throttle = 1000 to handle 1 chunk a second.
  */
-// AudioNode.prototype.throttle = false;
+AudioNode.prototype.throttle = false;
 
 
 /**
@@ -369,9 +398,32 @@ AudioNode.prototype._handleResult = function (result) {
 		// if (isAudioBuffer(result)) result = pcm.toBuffer(result, self.format);
 
 		//ensure callback is called
-		self._processCb(result);
 
-		self._processCb = null;
+		//if is paused - plan release on resume
+		if (self.throttle) {
+			if (self.state === 'paused') {
+				self.on('resume', function () {
+					self.log('cb');
+					self._processCb(result);
+					self._processCb = null;
+				});
+			}
+			//set throttle flag for N ms
+			else {
+				self.pause();
+				self.log('cb');
+				self._processCb(result);
+				self._processCb = null;
+				setTimeout(function () {
+					self.resume();
+				}, self.throttle);
+			}
+		} else {
+			self.log('cb');
+			self._processCb(result);
+			self._processCb = null;
+		}
+
 	}
 
 	self._processBuffer = null;
@@ -392,7 +444,7 @@ AudioNode.prototype._transform = function (chunk, enc, cb) {
 	var self = this;
 
 	//ignore bad states
-	if (self.state !== 'normal') return;
+	if (self.state === 'ended') return;
 
 	self._callProcess(chunk, function (chunk) {
 		cb(null, chunk);
@@ -406,13 +458,17 @@ AudioNode.prototype._transform = function (chunk, enc, cb) {
 AudioNode.prototype._read = function (size) {
 	var self = this;
 
+	self.log('read')
+
 	//ignore bad states
-	if (self.state !== 'normal') return;
+	if (self.state === 'ended') {
+		return;
+	}
 
 	//if no inputs but are outputs - be a generator
 	if (!self.inputsCount && self.outputsCount) {
 		//create buffer of needed size
-		var buffer = new Buffer(self.samplesPerFrame);
+		var buffer = new AudioBuffer(self.samplesPerFrame);
 
 		//generate new chunk with silence
 		self._callProcess(buffer, function (chunk) {
@@ -434,16 +490,20 @@ AudioNode.prototype._write = function (chunk, enc, cb) {
 	var self = this;
 
 	//ignore bad states (like, ended in between)
-	if (self.state !== 'normal') return;
+	if (self.state === 'ended') return;
 
 	//if no outputs but some inputs - be a sink
 	if (!self.outputsCount && self.inputsCount) {
-		self._callProcess(chunk, cb);
+		self._callProcess(chunk, function (a, b) {
+			//just emulate data event
+			self.emit('data', chunk);
+			cb();
+		});
 		self.emit('data', chunk);
 	}
 
 	//else be a transformer
 	else {
-		Transform.prototype._write.call(this, chunk, enc, cb);
+		Transform.prototype._write.call(self, chunk, enc, cb);
 	}
 };
