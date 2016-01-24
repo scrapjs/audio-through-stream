@@ -46,8 +46,8 @@ var audioNode = new Through(
 	},
 	//options
 	{
-		//process chunk each N ms
-		throttle: 0
+		//process chunk each N ms, useful for debugging to slow down processing
+		throttle: false
 	}
 );
 

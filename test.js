@@ -10,6 +10,7 @@ var Generator = require('audio-generator');
 var isBrowser = require('is-browser');
 // var test = it;
 var test = require('tst').only();
+var assert = require('assert');
 
 
 test('PassThrough', function (done) {
@@ -27,7 +28,7 @@ test('PassThrough', function (done) {
 		return input
 	}))
 	.pipe(Sink(function (data) {
-		console.log(data.length)
+		// console.log(data.length)
 	}));
 });
 
@@ -44,7 +45,7 @@ test('Source', function (done) {
 		});
 
 		if (this.time > 0.1) {
-			this.end(input);
+			this.end();
 		}
 	})
 	.on('end', done)
@@ -62,10 +63,11 @@ test('Destination', function () {
 
 });
 
-test('Speed regulation', function () {
+test.only('Speed regulation', function () {
 	if (!isBrowser) return;
 
-	/*
+	var buf;
+
 	//create sound renderer
 	var sourceNode = ctx.createBufferSource();
 	sourceNode.loop = true;
@@ -73,41 +75,72 @@ test('Speed regulation', function () {
 	sourceNode.start();
 	var scriptNode = ctx.createScriptProcessor(pcm.defaults.samplesPerFrame);
 	scriptNode.onaudioprocess = function (e) {
-		if (!buf) {
-			//release blocking of the rendering stream.
-			stream.resume();
-		}
+		buf = e.outputBuffer;
 
-		if (buf) {
-			//copy stream data (if any)
-			util.copy(buf, e.outputData);
-			buf = null;
-		}
-
+		//release stream
 		stream.resume();
 	};
 	sourceNode.connect(scriptNode);
 	scriptNode.connect(ctx.destination);
-	*/
+
 
 	var buf;
 
 	//create pipe of sound processing streams with regulated speed
-	var stream = Through(util.noise, {
-		throttle: 1000
+	var stream = Through(function (input) {
+		util.noise(input);
+		console.log('gen');
+	}, {
+		// throttle: 1000
 	})
 	.pipe(Through(function (input) {
+		console.log('send');
+
+		//place buffer to the output, if any
+		if (buf) util.copy(input, buf);
+
 		//to bind stream handling to the realtime,
 		//we need to defer pipe till the output is "thinking"
-		buf = input;
-
-		// self.pause();
+		this.pause();
 	}));
 });
 
-test('WebAudioNode', function () {
+
+test('pause/receive', function (done) {
+	this.timeout(false);
+
+	//create pipe of sound processing streams with regulated speed
+	var stream = Through(function (input) {
+		var self = this;
+
+		input.time = self.time;
+		self.log('generate', self.time);
+
+		//NOTE: calling pause here means that chunk will not be sent
+		// self.pause();
+		// setTimeout(function () {
+		// 	self.resume();
+		// }, 1000);
+	}, {
+		// throttle: 1000
+	})
+	.pipe(Through(function (input) {
+		var self = this;
+		self.log('receive', input.time)
+
+		self.pause();
+		setTimeout(function () {
+			self.resume();
+		}, 1000);
+	}));
+});
+
+test.skip('WebAudioNode', function () {
 
 });
+
+test('Connected to simple node');
+test('Connected from simple node');
 
 test.skip('Errors in processing', function (done) {
 
@@ -117,43 +150,80 @@ test.skip('error', function (done) {
 
 });
 
-test.only('throttle', function (done) {
+test('throttle source', function (done) {
 	this.timeout(false);
+
+	var count = 0;
+
 	var stream = Through(function (input) {
-		// console.log('Generated', this.time);
+		console.log('Generated', this.time);
 		input.time = this.time;
+
+		if (this.count > 3000) this.end();
 	}, {
-		throttle: 500
+		throttle: 100
+	})
+	.on('end', function () {
+		assert.equal(count, 4);
+		done();
 	})
 	.pipe(Through(function (input) {
-		// console.log('Received', input.time);
+		console.log('Received', input.time);
+		count++;
 	}));
-});
-
-test('mute', function () {
 
 });
 
-test('solo', function () {
+test('throttle destination', function (done) {
+	this.timeout(false);
+
+	var count = 0;
+
+	var stream = Through(function (input) {
+		console.log('Generated', this.time);
+		input.time = this.time;
+	})
+	.pipe(Through())
+	.pipe(Through(function (input) {
+		console.log('Received', input.time);
+		count++;
+
+		if (this.count > 3000) this.end();
+	}, {
+		throttle: 100
+	}))
+	.on('end', function () {
+		assert.equal(count, 4);
+		done();
+	});
+});
+
+test('single stream does not start generating, only when piped');
+
+test.skip('mute', function () {
 
 });
 
-test('schedule', function () {
+test.skip('solo', function () {
 
 });
 
-test('Multiple inputs', function () {
+test.skip('schedule', function () {
 
 });
 
-test('Multiple outputs', function () {
+test.skip('Multiple inputs', function () {
 
 });
 
-test('pause/resume', function () {
+test.skip('Multiple outputs', function () {
 
 });
 
-test('end', function () {
+test.skip('pause/resume', function () {
+
+});
+
+test.skip('end', function () {
 
 });

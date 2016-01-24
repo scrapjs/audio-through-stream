@@ -49,7 +49,7 @@ function AudioNode (processor, options) {
 
 	//just get unique id
 	self._id = streamCount++;
-	self.log('create', self._id);
+	// self.log('create', self._id);
 
 	//passed data count
 	self.count = 0;
@@ -76,9 +76,22 @@ function AudioNode (processor, options) {
 	pcm.normalize(self);
 
 	//manage input pipes number
-	self.on('pipe', function () {
+	self.on('pipe', function (source) {
 		self.inputsCount++;
-	}).on('unpipe', function () {
+
+		//manage end
+		self.on('end', function () {
+			source.unpipe(self)
+		});
+
+		//manage pipes
+		self.on('resume', function () {
+			source.resume();
+		});
+		self.on('pause', function () {
+			source.pause();
+		});
+	}).on('unpipe', function (source) {
 		self.inputsCount--;
 	});
 
@@ -201,42 +214,65 @@ AudioNode.prototype.state = undefined;
  */
 AudioNode.prototype.resume = function () {
 	var self = this;
-	// self.log('resume');
 
 	//NOTE: this method is used innerly as well, so we can’t really redefine it’s behaviour
-	//if (self.state !== 'paused') return //self.error('Cannot resume not paused stream.');
+	if (self.state === 'ended') return self;
 
 	self.state = 'normal';
 
+	//FIXME: a shitstory of ensuring the resume event is triggered
+	var isTriggered = false;
+	self.once('resume', function () {
+		isTriggered = true;
+	});
+
+	//NOTE: ↓ emits `resume`, in case if actually resumed
 	Transform.prototype.resume.call(self);
 
-	self.emit('resume');
+	//force emitting the event, if the readable above ignored it
+	if (!isTriggered) {
+		self.emit('resume');
+	}
 
 	return self;
 };
 
 
 /**
- * Pause handling
+ * Pause handling.
  */
 AudioNode.prototype.pause = function (time) {
 	var self = this;
 	// self.log('pause');
 
-	//if (self.state !== 'normal') return //self.error('Cannot pause not active stream.');
+	if (self.state === 'ended') return self;
 
 	self.state = 'paused';
 
-	Transform.prototype.pause.call(self);
+	//FIXME: a shitstory of ensuring the resume event is triggered
+	var isTriggered = false;
+	self.once('pause', function () {
+		isTriggered = true;
+	});
 
-	self.emit('pause');
+	//call pause if stream is a source only.
+	//FIXME: because if user pauses manually controlling stream - it causes generating twice
+	//not sure why
+	if (!self.inputsCount) {
+		Transform.prototype.pause.call(self);
+	}
+
+	if (!isTriggered) {
+		self.emit('pause');
+	}
 
 	return self;
 };
 
 
 /**
- * Indicate whether it is paused (just overrides the Through’s method)
+ * Indicate whether it is paused
+ * (just overrides the Through’s method)
  */
 AudioNode.prototype.isPaused = function (time) {
 	var self = this;
@@ -259,25 +295,37 @@ AudioNode.prototype.isPaused = function (time) {
  *
  * @param {AudioBuffer|Buffer} chunk final data
  */
-AudioNode.prototype.end = function (chunk, cb) {
+AudioNode.prototype.end = function (chunk) {
 	var self = this;
+
+	if (self.state === 'ended') return self;
+
+	//release planned guys
+	clearTimeout(self._throttleTimeout);
 
 	//FIXME quite ugly check.
 	//`Transform.prototype.end` below calls `end` for all the further piped streams
 	//and if they are also audio-through, they have non-zero `inputCount`
 	//but the cannot be called `end` as such
-	if (self.inputsCount) {
-		if (self._processCb) {
-			return self.error('Cannot end non-source stream.');
-		}
-	}
+	// if (self.inputsCount) {
+	// 	if (self._processCb) {
+			// return self.error('Cannot end non-source stream.');
+	// 	}
+	// }
+
+	self.state = 'ended';
 
 	//release callback, if any
 	self._handleResult(chunk);
 
-	//set state
-	self.state = 'ended';
 	Transform.prototype.end.call(this);
+	// self.log('ended');
+
+	self.emit('end');
+
+	//FIXME: the case for that is being connected to simple streams
+	//this causes them throw error of after-write, weird.
+	self.unpipe();
 
 	return self;
 };
@@ -303,7 +351,8 @@ AudioNode.prototype.error = function (error) {
  */
 AudioNode.prototype.log = function () {
 	var self = this;
-	var str = [].join.call(arguments, ' ');
+	var args = [].slice.call(arguments);
+	var str = [].join.call(args, ' ');
 	console.log(self.pfx(), str);
 	return self;
 };
@@ -353,17 +402,22 @@ AudioNode.prototype._process = function (buffer) {};
  */
 AudioNode.prototype._callProcess = function (buffer, cb) {
 	var self = this;
+	// self.log('_call', self.state)
 
 	//handle throttling
-	if (self.throttle) {
-		//if is paused - plan processing after being released
+	if (self.throttle || self.state === 'paused') {
+		//if is paused - plan processing after being release
 		//FIXME: potential issue if lots of _callProcesses being called during the pause
-		if (self.state === 'paused') {
+		//as such it is placing work of buffers to the events stack.
+		if (self.state === 'paused' && !self._plannedCall) {
 			self.once('resume', function () {
 				self._callProcess(buffer, cb);
+				self._plannedCall = true;
 			});
 			return self;
 		}
+
+		self._plannedCall = false;
 	}
 
 	//ensure buffer is AudioBuffer
@@ -377,15 +431,29 @@ AudioNode.prototype._callProcess = function (buffer, cb) {
 	//send buffer to processor
 	var result = self._process(buffer);
 
-	//handle the result
-	self._handleResult(result);
+	//if ended during the processing - just clear everything, ignore the chunk as it is not actual anymore
+	if (self.state === 'ended') {
+		return;
+	}
 
-	//else - just set throttle flag for N ms, if required
+	//just set throttle flag for N ms, if required
 	if (self.throttle) {
-		self.pause();
-		setTimeout(function () {
+		if (self.inputsCount) {
+			self.pause();
+			self._handleResult(result);
+		}
+		//FIXME: In source-streams we need to call pause after releasing result
+		else {
+			self._handleResult(result);
+			self.pause();
+		}
+
+		self._throttleTimeout = setTimeout(function () {
 			self.resume();
 		}, self.throttle);
+	} else {
+		//handle the result
+		self._handleResult(result);
 	}
 };
 
@@ -412,15 +480,13 @@ AudioNode.prototype._handleResult = function (result) {
 
 	//if the state changed during the processing, like, end called - ignore cb
 	//FIXME: test out other cases here, not only `ended` state
-	if (self.state === 'ended') {
-		//release callback
-		return;
-	}
+	// if (self.state === 'ended') {
+	// 	return;
+	// }
 
 	if (self._processCb) {
 		//TODO: detect whether we need to cast audioBuffer to buffer (connected 2 at least one plain stream)
 		// if (isAudioBuffer(result)) result = pcm.toBuffer(result, self.format);
-
 		self._processCb(result);
 		self._processCb = null;
 	}
@@ -430,7 +496,7 @@ AudioNode.prototype._handleResult = function (result) {
 
 	//update counters
 	if (result) {
-		self.count += result.length / self.channels;
+		self.count += result.length;
 		self.time = self.count / self.sampleRate;
 	}
 };
@@ -488,6 +554,8 @@ AudioNode.prototype._read = function (size) {
 AudioNode.prototype._write = function (chunk, enc, cb) {
 	var self = this;
 
+	// self.log('_write')
+
 	//ignore bad states (like, ended in between)
 	if (self.state === 'ended') return;
 
@@ -498,7 +566,6 @@ AudioNode.prototype._write = function (chunk, enc, cb) {
 			self.emit('data', chunk);
 			cb();
 		});
-		self.emit('data', chunk);
 	}
 
 	//else be a transformer
