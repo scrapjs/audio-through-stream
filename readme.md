@@ -33,21 +33,17 @@ Through(util.noise)
 //Create new audio node instance with passed options
 var audioNode = new Through(
 	//processing function
-	function (buffer) {
+	function (buffer, done?) {
 		//buffer is an instance of AudioBuffer, used as input-output.
 		//if other buffer is returned, the returned value will replace the buffer.
-		//if a promise is returned, the stream will wait for it.
+		//if done argument is expected - the processor will wait for it to be executed
+		//otherwise - will just sink the data
 
 		//number of sample-frames processed
 		this.count;
 
 		//If time of the current chunk is more than 3s, stop generation
 		if (this.time > 3) this.end();
-	},
-	//options
-	{
-		//process chunk each N ms, useful for debugging to slow down processing
-		throttle: false
 	}
 );
 

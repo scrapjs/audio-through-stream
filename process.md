@@ -8,6 +8,13 @@
 
 ## Questions
 
+* Should we use options object?
+	* + useful for throttle
+		* - throttle is better done by async callback expected
+	* + useful for sink
+		* - sink is detected from the type of the arguments in processing fn
+* audio-through cannot be a sink in sense it cannot release data without user’s control.
+	* Otherwise, any node in-between(transformer), being disconnected, becomes a sink, non-regulated.
 * So, what format of process is better: 1 audioProcessEvent, 2 inputBuffer or 3 node-like style?
 	* 1 + it may contain various addiotional info like time of the event, so we should not guess on the environment
 	* 1 + it might be conventional with worker

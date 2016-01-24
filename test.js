@@ -11,6 +11,10 @@ var isBrowser = require('is-browser');
 // var test = it;
 var test = require('tst').only();
 var assert = require('assert');
+var Stream = require('stream');
+var inherits = require('inherits');
+var extend = require('xtend/mutable');
+
 
 
 test('PassThrough', function (done) {
@@ -63,7 +67,7 @@ test('Destination', function () {
 
 });
 
-test.only('Speed regulation', function () {
+test('Speed regulation', function () {
 	if (!isBrowser) return;
 
 	var buf;
@@ -174,7 +178,7 @@ test('throttle source', function (done) {
 
 });
 
-test('throttle destination', function (done) {
+test.skip('pipe to non-object stream', function () {
 	this.timeout(false);
 
 	var count = 0;
@@ -183,14 +187,39 @@ test('throttle destination', function (done) {
 		console.log('Generated', this.time);
 		input.time = this.time;
 	})
-	.pipe(Through())
+	.pipe(Stream.PassThrough())
 	.pipe(Through(function (input) {
 		console.log('Received', input.time);
 		count++;
 
 		if (this.count > 3000) this.end();
 	}, {
-		throttle: 100
+		throttle: 1000
+	}))
+	.on('end', function () {
+		assert.equal(count, 4);
+		done();
+	});
+})
+
+test.only('throttle destination', function (done) {
+	this.timeout(false);
+
+	var count = 0;
+
+	Through(function (input) {
+		// console.log('Generated', this.time);
+		input.time = this.time;
+	})
+	.pipe(Through())
+	.pipe(Through(function (input, done) {
+		// console.log('Received', input.time);
+		count++;
+
+		if (this.count > 3000) this.end();
+
+		// done();
+		setTimeout(done, 100);
 	}))
 	.on('end', function () {
 		assert.equal(count, 4);
@@ -226,4 +255,84 @@ test.skip('pause/resume', function () {
 
 test.skip('end', function () {
 
+});
+
+
+test('Transform redefined', function () {
+	//research on a weird bug
+
+	var id = 0;
+
+	function Through (opts) {
+		if (!(this instanceof Through)) return new Through(opts);
+
+		this._id = id++;
+
+		var self = this;
+		Stream.Transform.call(self, {
+			highWaterMark: 0,
+			objectMode: true
+		});
+
+		//manage input pipes number
+		self.on('pipe', function (source) {
+			self.inputsCount++;
+		}).on('unpipe', function (source) {
+			self.inputsCount--;
+		});
+	}
+	Through.prototype.inputsCount = 0;
+	Object.defineProperties(Through.prototype, {
+		outputsCount: {
+			get: function () {
+				return this._readableState.pipesCount
+			},
+			set: function (value) {
+				throw Error('outputsCount is read-only');
+			}
+		}
+	});
+	extend(Through.prototype, pcm.defaults);
+
+
+	Through.prototype._transform = function (chunk, enc, cb) {
+		console.log(this._id, 'through', chunk.count);
+		cb(null, chunk);
+	};
+
+	Through.prototype._write = function (chunk, enc, cb) {
+		var self = this;
+		if (self.outputsCount) {
+			return Stream.Transform.prototype._write.call(self, chunk, enc, cb);
+		}
+
+		console.log(self._id, 'received', chunk.count)
+		// setTimeout(function () {
+			self.emit('data', chunk);
+			cb();
+		// }, 1000);
+	};
+
+	Through.prototype._read = function (size) {
+		if (this.inputsCount) {
+			return Stream.Transform.prototype._read.call(this, size);
+		}
+
+		count++
+		this.push({count: count});
+		console.log(this._id, 'generated', count);
+	};
+
+	Through.prototype.isPaused = function () {
+		return false;
+	};
+
+	inherits(Through, Stream.Transform);
+
+
+	var count = 0;
+
+	Through()
+	.pipe(Through())
+	.pipe(Through());
 });

@@ -19,7 +19,7 @@ var now = require('performance-now');
 var chalk = require('chalk');
 
 
-module.exports = AudioNode;
+module.exports = Through;
 
 
 var streamCount = 0;
@@ -30,8 +30,8 @@ var streamCount = 0;
  *
  * @constructor
  */
-function AudioNode (processor, options) {
-	if (!(this instanceof AudioNode)) return new AudioNode(processor, options);
+function Through (processor) {
+	if (!(this instanceof Through)) return new Through(processor);
 
 	var self = this;
 
@@ -43,8 +43,8 @@ function AudioNode (processor, options) {
 		objectMode: true,
 
 		//to keep processing delays very short, in case if we need RT binding.
-		//otherwise stream will hoard data and release only when it’s full.
-		highWaterMark: 1
+		//otherwise each stream will hoard data and release only when it’s full.
+		highWaterMark: 0
 	});
 
 	//just get unique id
@@ -57,7 +57,6 @@ function AudioNode (processor, options) {
 	//current processing time
 	self.time = 0;
 
-
 	// //table of planned time events
 	// self._plan = [];
 
@@ -66,11 +65,11 @@ function AudioNode (processor, options) {
 
 	//redefine _process method
 	if (processor) {
-		self._process = processor;
+		self.process = processor;
 	}
 
 	//take over options
-	extend(self, options);
+	// extend(self, options);
 
 	//normalize format
 	pcm.normalize(self);
@@ -80,17 +79,17 @@ function AudioNode (processor, options) {
 		self.inputsCount++;
 
 		//manage end
-		self.on('end', function () {
-			source.unpipe(self)
-		});
+		// self.on('end', function () {
+		// 	source.unpipe(self)
+		// });
 
 		//manage pipes
-		self.on('resume', function () {
-			source.resume();
-		});
-		self.on('pause', function () {
-			source.pause();
-		});
+		// self.on('resume', function () {
+		// 	source.resume();
+		// });
+		// self.on('pause', function () {
+		// 	source.pause();
+		// });
 	}).on('unpipe', function (source) {
 		self.inputsCount--;
 	});
@@ -103,16 +102,16 @@ function AudioNode (processor, options) {
 /**
  * Set duplex behaviour
  */
-inherits(AudioNode, Transform);
+inherits(Through, Transform);
 
 
 /**
  * Number active input connections
  */
-AudioNode.prototype.inputsCount = 0;
+Through.prototype.inputsCount = 0;
 
 
-Object.defineProperties(AudioNode.prototype, {
+Object.defineProperties(Through.prototype, {
 	/**
 	 * Number of active output connections
 	 */
@@ -126,11 +125,31 @@ Object.defineProperties(AudioNode.prototype, {
 	}
 });
 
+/**
+ * Manage piped to non-object streams flag
+ */
+
+Through.prototype.pipe = function (to) {
+	var self = this;
+
+	if (!to._writableState.objectMode) {
+		self.writableObjectMode = false;
+	}
+
+	return Transform.prototype.pipe.call(self, to);
+};
+
+
+/**
+ * Whether we need to cast AudioBuffer to Buffer in output.
+ */
+Through.prototype.writableObjectMode = true;
+
 
 /**
  * PCM-stream format, not affected if nodes are connected in WAA
  */
-extend(AudioNode.prototype, pcm.defaults);
+extend(Through.prototype, pcm.defaults);
 
 
 
@@ -151,13 +170,13 @@ extend(AudioNode.prototype, pcm.defaults);
  * solo?
  * playing?
  */
-AudioNode.prototype.state = undefined;
+Through.prototype.state = undefined;
 
 
 /**
  * Plan callback on time or event
  */
-// AudioNode.prototype.on = function (time, cb) {
+// Through.prototype.on = function (time, cb) {
 // 	var self = this;
 
 // 	//if number - plan timed event
@@ -180,7 +199,7 @@ AudioNode.prototype.state = undefined;
 /**
  * Plan callback each N seconds
  */
-// AudioNode.prototype.schedule = function (interval, offset, cb) {
+// Through.prototype.schedule = function (interval, offset, cb) {
 // 	var self = this;
 
 // 	if (typeof offset === 'Function') {
@@ -195,7 +214,7 @@ AudioNode.prototype.state = undefined;
 /**
  * Cancel planned callback/event
  */
-// AudioNode.prototype.off = function (event, cb) {
+// Through.prototype.off = function (event, cb) {
 // 	var self = this;
 
 // 	self.removeListeners(event, cb);
@@ -205,14 +224,15 @@ AudioNode.prototype.state = undefined;
 /**
  * Cancel planned time callback
  */
-// AudioNode.prototype.cancel = function (time, cb) {
+// Through.prototype.cancel = function (time, cb) {
 // };
 
 
 /**
  * Resume handling
  */
-AudioNode.prototype.resume = function () {
+/*
+Through.prototype.resume = function () {
 	var self = this;
 
 	//NOTE: this method is used innerly as well, so we can’t really redefine it’s behaviour
@@ -236,12 +256,14 @@ AudioNode.prototype.resume = function () {
 
 	return self;
 };
+*/
 
 
 /**
  * Pause handling.
  */
-AudioNode.prototype.pause = function (time) {
+/*
+Through.prototype.pause = function (time) {
 	var self = this;
 	// self.log('pause');
 
@@ -268,25 +290,20 @@ AudioNode.prototype.pause = function (time) {
 
 	return self;
 };
+*/
 
 
 /**
  * Indicate whether it is paused
  * (just overrides the Through’s method)
  */
-AudioNode.prototype.isPaused = function (time) {
+/*
+Through.prototype.isPaused = function (time) {
 	var self = this;
 	return self.state === 'paused';
 };
+*/
 
-
-/**
- * Supposed that isn’t started by default.
- * Called automatically by pipe.
- */
-// AudioNode.prototype.start = function () {
-
-// };
 
 
 /**
@@ -295,13 +312,12 @@ AudioNode.prototype.isPaused = function (time) {
  *
  * @param {AudioBuffer|Buffer} chunk final data
  */
-AudioNode.prototype.end = function (chunk) {
+
+
+Through.prototype.end = function (chunk) {
 	var self = this;
 
 	if (self.state === 'ended') return self;
-
-	//release planned guys
-	clearTimeout(self._throttleTimeout);
 
 	//FIXME quite ugly check.
 	//`Transform.prototype.end` below calls `end` for all the further piped streams
@@ -316,7 +332,7 @@ AudioNode.prototype.end = function (chunk) {
 	self.state = 'ended';
 
 	//release callback, if any
-	self._handleResult(chunk);
+	// self._handleResult(chunk);
 
 	Transform.prototype.end.call(this);
 	// self.log('ended');
@@ -325,16 +341,32 @@ AudioNode.prototype.end = function (chunk) {
 
 	//FIXME: the case for that is being connected to simple streams
 	//this causes them throw error of after-write, weird.
-	self.unpipe();
+	//From the other side, unconnecting turns prev stream into a sink, which is bad
+	// self.unpipe();
 
 	return self;
 };
 
 
+
+
+/**
+ * WAA conventional methods to control stream.
+ */
+Through.prototype.start = function () {
+
+};
+
+Through.prototype.stop = function () {
+
+};
+
+
+
 /**
  * Throw inobstructive error. Does not stop stream.
  */
-AudioNode.prototype.error = function (error) {
+Through.prototype.error = function (error) {
 	var self = this;
 
 	//ensure error format
@@ -349,7 +381,7 @@ AudioNode.prototype.error = function (error) {
 /**
  * Same as error, but for logging purposes
  */
-AudioNode.prototype.log = function () {
+Through.prototype.log = function () {
 	var self = this;
 	var args = [].slice.call(arguments);
 	var str = [].join.call(args, ' ');
@@ -361,7 +393,7 @@ AudioNode.prototype.log = function () {
 /**
  * Return prefix for logging
  */
-AudioNode.prototype.pfx = function () {
+Through.prototype.pfx = function () {
 	var self = this;
 	return chalk.gray('#' + self._id + ' ' + (now() - self._creationTime).toFixed(0) + 'ms');
 };
@@ -370,23 +402,15 @@ AudioNode.prototype.pfx = function () {
 /**
  * Fade out the node
  */
-// AudioNode.prototype.mute = function () {
+// Through.prototype.mute = function () {
 // };
 
 
 /**
  * Fade out all other nodes
  */
-// AudioNode.prototype.solo = function () {
+// Through.prototype.solo = function () {
 // };
-
-
-/**
- * Meditate for a processor tick each N ms.
- * Needed to slow down sink performance - otherwise it will just flush all the data w/o pauses, which will block main thread.
- * Also useful for debugging, where you want to see the chunk data. Just set throttle = 1000 to handle 1 chunk a second.
- */
-AudioNode.prototype.throttle = false;
 
 
 /**
@@ -394,125 +418,120 @@ AudioNode.prototype.throttle = false;
  * Basically provides a chunk with data and expects user to fill that.
  * If returned a promise, then will wait till it is resolved.
  */
-AudioNode.prototype._process = function (buffer) {};
+Through.prototype.process = function (buffer) {
+};
 
 
 /**
  * Invoke _process for a chunk.
  */
-AudioNode.prototype._callProcess = function (buffer, cb) {
+Through.prototype._process = function (buffer, cb) {
 	var self = this;
 	// self.log('_call', self.state)
 
 	//handle throttling
-	if (self.throttle || self.state === 'paused') {
-		//if is paused - plan processing after being release
-		//FIXME: potential issue if lots of _callProcesses being called during the pause
-		//as such it is placing work of buffers to the events stack.
-		if (self.state === 'paused' && !self._plannedCall) {
-			self.once('resume', function () {
-				self._callProcess(buffer, cb);
-				self._plannedCall = true;
-			});
-			return self;
-		}
+	//if is paused - plan processing after being release
+	//FIXME: potential issue if lots of _processes being called during the pause
+	//as such it is placing work of buffers to the events stack.
+	// if (self._throttleTimeout) {
+	// 	if (!self._plannedCall) {
+	// 		self._plannedCall = true;
+	// 		self.once('unblock', function () {
+	// 			self._process(buffer, cb);
+	// 		});
+	// 	}
+	// 	return;
+	// }
 
-		self._plannedCall = false;
-	}
+	// self._plannedCall = false;
 
 	//ensure buffer is AudioBuffer
 	//FIXME: detect passed buffer format - not necessarily planar/2/etc
 	if (!isAudioBuffer(buffer)) buffer = pcm.toAudioBuffer(buffer, self);
 
-	//save awaiting cb
-	self._processCb = cb;
-	self._processBuffer = buffer;
-
 	//send buffer to processor
-	var result = self._process(buffer);
-
-	//if ended during the processing - just clear everything, ignore the chunk as it is not actual anymore
-	if (self.state === 'ended') {
+	//NOTE: why not promise? promise causes processor tick between executor and `then`.
+	//if expected more than one argument - make execution async (like mocha)
+	//also if no outputs - force awaiting the callback
+	if (!self.outputsCount || self.process.length === 2) {
+		self.process(buffer, _handleResult);
 		return;
 	}
 
-	//just set throttle flag for N ms, if required
-	if (self.throttle) {
-		if (self.inputsCount) {
-			self.pause();
-			self._handleResult(result);
-		}
-		//FIXME: In source-streams we need to call pause after releasing result
-		else {
-			self._handleResult(result);
-			self.pause();
-		}
+	//otherwise - do sync processing
+	var result = self.process(buffer);
 
-		self._throttleTimeout = setTimeout(function () {
-			self.resume();
-		}, self.throttle);
-	} else {
-		//handle the result
-		self._handleResult(result);
-	}
-};
-
-
-/**
- * Result handler
- */
-AudioNode.prototype._handleResult = function (result) {
-	var self = this;
-
-	//if no return - then user is wisely just modified input buffer
-	if (!result) {
-		result = self._processBuffer;
-	}
-
-	//if returned a promise - wait
-	if (isPromise(result)) {
-		result.then(function (result) {
-			self._handleResult(result);
-		}, self.error);
-
-		return;
-	}
-
-	//if the state changed during the processing, like, end called - ignore cb
-	//FIXME: test out other cases here, not only `ended` state
+	//if ended during the processing - just clear everything, ignore the chunk, as it is not actual anymore
+	//FIXME: plan end, do not force it
 	// if (self.state === 'ended') {
 	// 	return;
 	// }
 
-	if (self._processCb) {
-		//TODO: detect whether we need to cast audioBuffer to buffer (connected 2 at least one plain stream)
-		// if (isAudioBuffer(result)) result = pcm.toBuffer(result, self.format);
-		self._processCb(result);
-		self._processCb = null;
-	}
+	_handleResult(result);
 
-	self._processBuffer = null;
+	function _handleResult (result) {
+		//if no return - then user is wisely just modified input buffer
+		if (!result) {
+			result = buffer;
+		}
 
+		//if returned a promise - wait
+		if (isPromise(result)) {
+			result.then(function (result) {
+				_handleResult(result);
+			}, self.error);
 
-	//update counters
-	if (result) {
+			return;
+		}
+
+		//if the state changed during the processing, like, end called - ignore cb
+		//FIXME: test out other cases here, not only `ended` state
+		// if (self.state === 'ended') {
+		// 	return;
+		// }
+
+		//update counters
 		self.count += result.length;
 		self.time = self.count / self.sampleRate;
-	}
+
+		//TODO: detect whether we need to cast audioBuffer to buffer (connected 2 at least one plain stream)
+		if (!self.writableObjectMode && isAudioBuffer(result)) {
+			result = pcm.toBuffer(result, self);
+		}
+
+		//if throttling - wait to release
+		// if (self.throttle != null) {
+		// 	self._throttleTimeout = setTimeout(function () {
+		// 		self._throttleTimeout = null;
+		// 		cb(result);
+		// 	}, self.throttle);
+		// } else {
+		cb(result);
+		// }
+
+		// if (self._isFull) {
+		// 	self._isFull = false;
+		// 	self.emit('unblock');
+		// }
+	};
 };
+
+
 
 
 /**
  * Transformer method
  */
-AudioNode.prototype._transform = function (chunk, enc, cb) {
+Through.prototype._transform = function (chunk, enc, cb) {
 	var self = this;
+
+	// self.log('_transform');
 
 	//ignore bad states
 	if (self.state === 'ended') return;
 
-	self._callProcess(chunk, function (chunk) {
-		cb(null, chunk);
+	self._process(chunk, function (result) {
+		cb(null, result);
 	});
 };
 
@@ -520,56 +539,51 @@ AudioNode.prototype._transform = function (chunk, enc, cb) {
 /**
  * Generator method
  */
-AudioNode.prototype._read = function (size) {
+Through.prototype._read = function (size) {
 	var self = this;
 
-	// self.log('_read')
+
+	// if (self._isFull) return;
 
 	//ignore bad states
 	if (self.state === 'ended') {
 		return;
 	}
 
-	//if no inputs but are outputs - be a generator
-	if (!self.inputsCount && self.outputsCount) {
-		//create buffer of needed size
-		var buffer = new AudioBuffer(self.samplesPerFrame);
-
-		//generate new chunk with silence
-		self._callProcess(buffer, function (chunk) {
-			self.push(chunk);
-		});
+	//in-middle case - be a transformer
+	if (self.inputsCount) {
+		return Transform.prototype._read.call(self, size);
 	}
 
-	//else be a transformer
-	else {
-		Transform.prototype._read.call(this, size);
-	}
+	// self.log('_read');
+
+	//create buffer of needed size
+	var buffer = new AudioBuffer(self.samplesPerFrame);
+
+	//generate new chunk with silence
+	self._process(buffer, function (result) {
+		self.push(result);
+	});
 };
 
 
 /**
  * Sink method
  */
-AudioNode.prototype._write = function (chunk, enc, cb) {
+Through.prototype._write = function (chunk, enc, cb) {
 	var self = this;
-
-	// self.log('_write')
 
 	//ignore bad states (like, ended in between)
 	if (self.state === 'ended') return;
 
-	//if no outputs but some inputs - be a sink
-	if (!self.outputsCount && self.inputsCount) {
-		self._callProcess(chunk, function (a, b) {
-			//just emulate data event
-			self.emit('data', chunk);
-			cb();
-		});
+	//be a transformer
+	if (self.outputsCount) {
+		return Transform.prototype._write.call(self, chunk, enc, cb);
 	}
 
-	//else be a transformer
-	else {
-		Transform.prototype._write.call(self, chunk, enc, cb);
-	}
+	//if no outputs but some inputs - be a sink
+	self._process(chunk, function (result) {
+		self.emit('data', result);
+		cb();
+	});
 };
