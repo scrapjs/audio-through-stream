@@ -1,9 +1,6 @@
 /**
- * Abstract audio node class.
- *
- * @module audio-node
+ * @module audio-through
  */
-
 
 var Transform = require('stream').Transform;
 var pcm = require('pcm-util');
@@ -24,12 +21,12 @@ var streamCount = 0;
 
 
 /**
- * Create audio processor
+ * Create stream instance
  *
  * @constructor
  */
-function Through (processor, options) {
-	if (!(this instanceof Through)) return new Through(processor, options);
+function Through (fn, options) {
+	if (!(this instanceof Through)) return new Through(fn, options);
 
 	var self = this;
 
@@ -65,8 +62,8 @@ function Through (processor, options) {
 	// self._schedule = [];
 
 	//redefine _process method
-	if (processor) {
-		self.process = processor;
+	if (fn) {
+		self.process = fn;
 	}
 
 	//take over options, mostly the format ones
@@ -78,19 +75,6 @@ function Through (processor, options) {
 	//manage input pipes number
 	self.on('pipe', function (source) {
 		self.inputsCount++;
-
-		//manage end
-		// self.on('end', function () {
-		// 	source.unpipe(self)
-		// });
-
-		//manage pipes
-		// self.on('resume', function () {
-		// 	source.resume();
-		// });
-		// self.on('pause', function () {
-		// 	source.pause();
-		// });
 	}).on('unpipe', function (source) {
 		self.inputsCount--;
 	});
@@ -107,14 +91,14 @@ inherits(Through, Transform);
 
 
 /**
- * Number active input connections
+ * Number of active input connections
  */
 Through.prototype.inputsCount = 0;
 
 
 Object.defineProperties(Through.prototype, {
 	/**
-	 * Number of active output connections
+	 * Number of active output connections - exists in readable stream
 	 */
 	outputsCount: {
 		get: function () {
@@ -126,14 +110,15 @@ Object.defineProperties(Through.prototype, {
 	}
 });
 
-/**
- * Manage piped to non-object streams flag
- */
 
+/**
+ * Extend piping
+ */
 Through.prototype.pipe = function (to) {
 	var self = this;
 
-	if (!to._writableState.objectMode) {
+	//detect if we need casting output to buffer (decreases performance)
+	if (self.writableObjectMode && !to._writableState.objectMode) {
 		self.writableObjectMode = false;
 	}
 
@@ -152,13 +137,13 @@ Through.prototype.writableObjectMode = true;
 
 /**
  * Indicator of whether it is sink.
- * Automatically set false once the stream is connected to anything.
+ * Automatically set to false once the stream is connected to anything.
  */
 Through.prototype.sink = true;
 
 
 /**
- * PCM-stream format, not affected if nodes are connected in WAA
+ * PCM-stream buffer format to parse from input or cast to output
  */
 extend(Through.prototype, pcm.defaults);
 
@@ -167,14 +152,13 @@ extend(Through.prototype, pcm.defaults);
  * Current state of audio node, spec + extended by the methods.
  *
  * normal
- * paused
  * ended
  *
- * playing
- * connection
- * tail-time
- * muted
- * error
+ * playing?
+ * connection?
+ * tail-time?
+ * muted?
+ * error?
  * processing/waiting?
  * limit?
  * solo?
@@ -184,7 +168,7 @@ Through.prototype.state = undefined;
 
 
 /**
- * Plan callback on time or event
+ * TODO: Plan callback on time or event
  */
 // Through.prototype.on = function (time, cb) {
 // 	var self = this;
@@ -208,7 +192,7 @@ Through.prototype.state = undefined;
 
 
 /**
- * Plan callback each N seconds
+ * TODO: Plan callback each N seconds
  */
 // Through.prototype.schedule = function (interval, offset, cb) {
 // 	var self = this;
@@ -223,7 +207,7 @@ Through.prototype.state = undefined;
 
 
 /**
- * Cancel planned callback/event
+ * TODO: Cancel planned callback/event
  */
 // Through.prototype.off = function (event, cb) {
 // 	var self = this;
@@ -233,14 +217,14 @@ Through.prototype.state = undefined;
 
 
 /**
- * Cancel planned time callback
+ * TODO: Cancel planned time callback
  */
 // Through.prototype.cancel = function (time, cb) {
 // };
 
 
 /**
- * Resume handling
+ * TODO: Resume handling
  */
 /*
 Through.prototype.resume = function () {
@@ -271,7 +255,7 @@ Through.prototype.resume = function () {
 
 
 /**
- * Pause handling.
+ * TODO: Pause handling.
  */
 /*
 Through.prototype.pause = function (time) {
@@ -305,7 +289,7 @@ Through.prototype.pause = function (time) {
 
 
 /**
- * Indicate whether it is paused
+ * TODO: Indicate whether it is paused
  * (just overrides the Through’s method)
  */
 /*
@@ -318,12 +302,10 @@ Through.prototype.isPaused = function (time) {
 
 
 /**
- * Close audio node with final passed audiobuffer.
+ * Plan stream closing.
  * Overrides stream’s end.
- *
- * @param {AudioBuffer|Buffer} chunk final data
  */
-Through.prototype.end = function (chunk) {
+Through.prototype.end = function () {
 	var self = this;
 
 	//plan invokation of end
@@ -335,7 +317,7 @@ Through.prototype.end = function (chunk) {
 		this.emit('end');
 		this.log('end');
 
-		//FIXME: the case for that is being connected to simple streams
+		//FIXME: the case for that is when being connected to simple streams
 		//this causes them throw error of after-write, weird.
 		this.unpipe();
 	});
@@ -345,7 +327,7 @@ Through.prototype.end = function (chunk) {
 
 
 /**
- * Just call the tasks
+ * Just call the planned tasks
  */
 Through.prototype.doTasks = function () {
 	var self = this;
@@ -393,14 +375,14 @@ function pfx (self) {
 
 
 /**
- * Fade out the node
+ * TODO: Fade out the node
  */
 // Through.prototype.mute = function () {
 // };
 
 
 /**
- * Fade out all other nodes
+ * TODO: Fade out all other nodes
  */
 // Through.prototype.solo = function () {
 // };
@@ -462,6 +444,7 @@ Through.prototype._process = function (buffer, cb) {
 		//provide hook
 		self.emit('afterProcess', result);
 
+		//convert to buffer, if at least one output is natural node-stream
 		if (!self.writableObjectMode && isAudioBuffer(result)) {
 			result = pcm.toBuffer(result, self);
 		}
@@ -520,7 +503,7 @@ Through.prototype._write = function (chunk, enc, cb) {
 	//ignore bad states (like, ended in between)
 	if (self.state === 'ended') return;
 
-	//be a transformer
+	//be a transformer, if in-between
 	if (self.outputsCount) {
 		return Transform.prototype._write.call(self, chunk, enc, cb);
 	}
