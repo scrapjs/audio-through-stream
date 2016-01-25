@@ -23,11 +23,11 @@ Through(util.noise)
 
 //decrease volume
 .pipe(Through(function (buffer) {
-	var volume = 0.2;
+  var volume = 0.2;
 
-	util.fill(buffer, function (sample) {
-		return sample * volume;
-	});
+  util.fill(buffer, function (sample) {
+    return sample * volume;
+  });
 }))
 
 //output
@@ -38,25 +38,25 @@ Through(util.noise)
 
 ```js
 var through = new Through(
-	//`buffer` is an instance of AudioBuffer, used as input-output.
-	//If other buffer is returned, it will replace the `buffer`.
-	//If `done` argument is expected - the processor will wait for it to be executed,
-	//otherwise - will sink the data.
-	function (buffer, done?) {
+  //`buffer` is an instance of AudioBuffer, used as input-output.
+  //If other buffer is returned, it will replace the `buffer`.
+  //If `done` argument is expected - the processor will wait for it to be executed,
+  //otherwise - will sink the data.
+  function (buffer, done?) {
 
-		//number of sample-frames processed
-		this.count;
+    //number of sample-frames processed
+    this.count;
 
-		//If time of the current chunk is more than 3s, stop generation
-		if (this.time > 3) this.end();
+    //If time of the current chunk is more than 3s, stop generation
+    if (this.time > 3) this.end();
 
-		//simple throttling
-		setTimeout(done, 100);
-	},
+    //simple throttling
+    setTimeout(done, 100);
+  },
 
-	//Optional buffer format to use when connected to raw streams, like `node-speaker`.
-	//If undefined, pcm default format is used.
-	format?
+  //Optional buffer format to use when connected to raw streams, like `node-speaker`.
+  //If undefined, pcm default format is used.
+  format?
 );
 
 //End stream
