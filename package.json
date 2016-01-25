@@ -28,25 +28,25 @@
   },
   "homepage": "https://github.com/audio-lab/audio-through",
   "devDependencies": {
-    "audio-buffer-utils": "^1.1.0",
+    "audio-buffer-utils": "^2.0.0",
     "audio-generator": "^1.1.0",
     "audio-sink": "^1.0.1",
     "audio-speaker": "^1.1.3",
     "is-browser": "^2.0.1",
-    "performance-now": "^0.2.0",
     "tst": "^1.0.2"
   },
   "dependencies": {
-    "array-find": "^1.0.0",
+    "performance-now": "^0.2.0",
+    "pcm-util": "^2.0.1",
     "audio-buffer": "^2.1.3",
     "audio-context": "^0.1.0",
     "chalk": "^1.1.1",
-    "get-uid": "^1.0.1",
     "inherits": "^2.0.1",
     "is-audio-buffer": "^1.0.1",
     "is-promise": "^2.1.0",
-    "pcm-util": "^2.0.1",
     "performance-now": "^0.2.0",
+    "array-find": "^1.0.0",
+    "get-uid": "^1.0.1",
     "xtend": "^4.0.1"
   }
 }
