@@ -43,7 +43,6 @@ var through = new Through(
   //If `done` argument is expected - the processor will wait for it to be executed,
   //otherwise - will sink the data.
   function (buffer, done?) {
-
     //number of sample-frames processed
     this.count;
 
@@ -72,13 +71,12 @@ through.log(string);
 through.state;
 
 
-through
 
 //invoke before processing the chunk
-.on('beforeProcess')
+through.on('beforeProcess', function (buffer) {})
 
 //call after processing the chunk
-.on('afterProcess')
+.on('afterProcess', function (buffer) {})
 ```
 
 ## Related
