@@ -6,7 +6,7 @@ Through stream for audio processing.
 * Provides debugging facilities.
 * Provides simple audio data metrics.
 * Compatible with node-streams.
-* Can be used as a readable, transform or writable stream at the same time.
+* Can be used as a _Readable_, _Transform_ or _Writable_ stream.
 
 
 ## Usage
