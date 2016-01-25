@@ -1,4 +1,11 @@
-Through stream for audio processing. Optimized to handle audio-data by sharing _AudioBuffer_ between streams instead of copying _Buffer_, uses zero-buffering to avoid delays, provides simple interface to control the flow pressure, e. g. to bind processing to the real time or to easily debug values.
+Through stream for audio processing.
+
+* Shares _AudioBuffer_ between streams instead of copying _Buffer_.
+* Uses zero-buffering to avoid delays.
+* Provides easy way to control the flow pressure, e. g. to bind processing to the real time, easily debug chunks, outsource processing to shaders/webworkers/audio-workers, etc.
+* Provides debugging facilities.
+* Provides simple audio data metrics.
+* Compatible with node-streams.
 
 
 ## Usage
@@ -51,7 +58,7 @@ var through = new Through(
 	format?
 );
 
-//End stream, optionally sending final data
+//End stream
 through.end();
 
 //Throw error, not breaking the pipe
