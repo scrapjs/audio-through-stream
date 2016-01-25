@@ -13,6 +13,7 @@
 		* - throttle is better done by async callback expected
 	* + useful for sink
 		* - sink is detected from the type of the arguments in processing fn
+	* + useful to define [ouput] format, if connected to some other real nodes
 * audio-through cannot be a sink in sense it cannot release data without user’s control.
 	* Otherwise, any node in-between(transformer), being disconnected, becomes a sink, non-regulated.
 * So, what format of process is better: 1 audioProcessEvent, 2 inputBuffer or 3 node-like style?

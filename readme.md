@@ -1,4 +1,4 @@
-Through stream for audio processing streams.
+Through stream for audio processing.
 
 
 ## Usage
@@ -32,35 +32,48 @@ Through(util.noise)
 ```js
 //Create new audio node instance with passed options
 var audioNode = new Through(
-	//processing function
+	//Main processing function.
+	//`buffer` is an instance of AudioBuffer, used as input-output.
+	//If other buffer is returned, it will replace the `buffer`.
+	//If `done` argument is expected - the processor will wait for it to be executed,
+	//otherwise - will sink the data.
 	function (buffer, done?) {
-		//buffer is an instance of AudioBuffer, used as input-output.
-		//if other buffer is returned, the returned value will replace the buffer.
-		//if done argument is expected - the processor will wait for it to be executed
-		//otherwise - will just sink the data
 
 		//number of sample-frames processed
 		this.count;
 
 		//If time of the current chunk is more than 3s, stop generation
 		if (this.time > 3) this.end();
-	}
+
+		//simple throttling
+		setTimeout(done, 100);
+	},
+
+	//Optional buffer format to use when connected to raw streams, like `node-speaker`.
+	//If undefined, pcm default format is used.
+	format?
 );
 
 //End stream, optionally sending final data
-audioNode.end(buffer?);
-
-//Pause processing
-audioNode.pause();
-
-//Continue processing
-audioNode.resume();
+audioNode.end();
 
 //Throw error, not breaking the pipe
 audioNode.error(error|string);
 
+//Log buffer-related info
+audioNode.log(string);
+
 //Current state: normal, paused, ended, muted, solo, error
 audioNode.state;
+
+
+audioNode
+
+//invoke before processing the chunk
+.on('beforeProcess')
+
+//call after processing the chunk
+.on('afterProcess')
 ```
 
 ## Related

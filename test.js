@@ -8,12 +8,12 @@ var util = require('../audio-buffer-utils');
 var pcm = require('pcm-util');
 var Generator = require('audio-generator');
 var isBrowser = require('is-browser');
-// var test = it;
-var test = require('tst').only();
 var assert = require('assert');
 var Stream = require('stream');
 var inherits = require('inherits');
 var extend = require('xtend/mutable');
+var test = require('tst')//.only();
+// var test = it;
 
 
 
@@ -29,7 +29,7 @@ test('PassThrough', function (done) {
 		// this.end();
 	}))
 	.pipe(Through(function (input) {
-		return input
+		return input;
 	}))
 	.pipe(Sink(function (data) {
 		// console.log(data.length)
@@ -67,10 +67,10 @@ test('Destination', function () {
 
 });
 
-test('Speed regulation', function () {
-	if (!isBrowser) return;
+test('Speed regulation', function (done) {
+	if (!isBrowser) return done();
 
-	var buf;
+	var buf, resume;
 
 	//create sound renderer
 	var sourceNode = ctx.createBufferSource();
@@ -82,7 +82,12 @@ test('Speed regulation', function () {
 		buf = e.outputBuffer;
 
 		//release stream
-		stream.resume();
+		resume && resume();
+
+		if (e.playbackTime > 0.15) {
+			done();
+			scriptNode.disconnect();
+		}
 	};
 	sourceNode.connect(scriptNode);
 	scriptNode.connect(ctx.destination);
@@ -91,26 +96,20 @@ test('Speed regulation', function () {
 	var buf;
 
 	//create pipe of sound processing streams with regulated speed
-	var stream = Through(function (input) {
-		util.noise(input);
-		console.log('gen');
-	}, {
-		// throttle: 1000
-	})
-	.pipe(Through(function (input) {
-		console.log('send');
-
+	var stream = Through(util.noise)
+	.pipe(Through(function (input, cb) {
 		//place buffer to the output, if any
 		if (buf) util.copy(input, buf);
 
-		//to bind stream handling to the realtime,
-		//we need to defer pipe till the output is "thinking"
-		this.pause();
+		resume = cb;
 	}));
 });
 
 
-test('pause/receive', function (done) {
+test.skip('pause/receive', function (done) {
+	//Use-case for this test is obsolete.
+	//Use process function callback for that, redefining these methods is not a good idea
+
 	this.timeout(false);
 
 	//create pipe of sound processing streams with regulated speed
@@ -125,8 +124,6 @@ test('pause/receive', function (done) {
 		// setTimeout(function () {
 		// 	self.resume();
 		// }, 1000);
-	}, {
-		// throttle: 1000
 	})
 	.pipe(Through(function (input) {
 		var self = this;
@@ -159,42 +156,44 @@ test('throttle source', function (done) {
 
 	var count = 0;
 
-	var stream = Through(function (input) {
-		console.log('Generated', this.time);
+	var stream = Through(function (input, done) {
+		// console.log('Generated', this.time);
 		input.time = this.time;
 
 		if (this.count > 3000) this.end();
-	}, {
-		throttle: 100
+
+		setTimeout(done, 50);
 	})
 	.on('end', function () {
 		assert.equal(count, 4);
 		done();
 	})
 	.pipe(Through(function (input) {
-		console.log('Received', input.time);
+		// console.log('Received', input.time);
 		count++;
 	}));
 
 });
 
-test.skip('pipe to non-object stream', function () {
+test('pipe to non-object stream', function (done) {
 	this.timeout(false);
 
 	var count = 0;
 
 	var stream = Through(function (input) {
-		console.log('Generated', this.time);
+		// console.log('Generated', this.time);
 		input.time = this.time;
 	})
-	.pipe(Stream.PassThrough())
-	.pipe(Through(function (input) {
-		console.log('Received', input.time);
+	.pipe(Stream.PassThrough({
+		highWaterMark: 0
+	}))
+	.pipe(Through(function (input, done) {
+		// console.log('Received', input.time);
 		count++;
 
 		if (this.count > 3000) this.end();
-	}, {
-		throttle: 1000
+
+		done();
 	}))
 	.on('end', function () {
 		assert.equal(count, 4);
@@ -202,7 +201,7 @@ test.skip('pipe to non-object stream', function () {
 	});
 })
 
-test.only('throttle destination', function (done) {
+test('throttle destination', function (done) {
 	this.timeout(false);
 
 	var count = 0;
@@ -218,13 +217,16 @@ test.only('throttle destination', function (done) {
 
 		if (this.count > 3000) this.end();
 
-		// done();
-		setTimeout(done, 100);
+		setTimeout(done, 50);
 	}))
 	.on('end', function () {
 		assert.equal(count, 4);
 		done();
 	});
+});
+
+test('beforeProcess, afterProcess hooks', function () {
+
 });
 
 test('single stream does not start generating, only when piped');
@@ -258,8 +260,10 @@ test.skip('end', function () {
 });
 
 
-test('Transform redefined', function () {
-	//research on a weird bug
+test.skip('Transform redefined', function () {
+	//research on a weird bug of infinite generation
+	//that happened if destination is unconnected and prev note automatically becomes sink
+	//solved by sink "virginity" flag - once node is not sink, it is never a sink
 
 	var id = 0;
 

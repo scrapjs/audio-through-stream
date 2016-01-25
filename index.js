@@ -7,14 +7,12 @@
 
 var Transform = require('stream').Transform;
 var pcm = require('pcm-util');
-// var find = require('array-find');
 var inherits = require('inherits');
 var extend = require('xtend/mutable');
 var isPromise = require('is-promise');
 var context = require('audio-context');
 var AudioBuffer = require('audio-buffer');
 var isAudioBuffer = require('is-audio-buffer');
-var getUid = require('get-uid');
 var now = require('performance-now');
 var chalk = require('chalk');
 
@@ -30,8 +28,8 @@ var streamCount = 0;
  *
  * @constructor
  */
-function Through (processor) {
-	if (!(this instanceof Through)) return new Through(processor);
+function Through (processor, options) {
+	if (!(this instanceof Through)) return new Through(processor, options);
 
 	var self = this;
 
@@ -57,6 +55,9 @@ function Through (processor) {
 	//current processing time
 	self.time = 0;
 
+	//set of tasks to perform
+	self._tasks = [];
+
 	// //table of planned time events
 	// self._plan = [];
 
@@ -68,8 +69,8 @@ function Through (processor) {
 		self.process = processor;
 	}
 
-	//take over options
-	// extend(self, options);
+	//take over options, mostly the format ones
+	extend(self, options);
 
 	//normalize format
 	pcm.normalize(self);
@@ -136,6 +137,9 @@ Through.prototype.pipe = function (to) {
 		self.writableObjectMode = false;
 	}
 
+	//loose sink virginity
+	if (!self.sink) self.sink = false;
+
 	return Transform.prototype.pipe.call(self, to);
 };
 
@@ -147,10 +151,16 @@ Through.prototype.writableObjectMode = true;
 
 
 /**
+ * Indicator of whether it is sink.
+ * Automatically set false once the stream is connected to anything.
+ */
+Through.prototype.sink = true;
+
+
+/**
  * PCM-stream format, not affected if nodes are connected in WAA
  */
 extend(Through.prototype, pcm.defaults);
-
 
 
 /**
@@ -194,6 +204,7 @@ Through.prototype.state = undefined;
 
 // 	return self;
 // };
+
 
 
 /**
@@ -312,55 +323,38 @@ Through.prototype.isPaused = function (time) {
  *
  * @param {AudioBuffer|Buffer} chunk final data
  */
-
-
 Through.prototype.end = function (chunk) {
 	var self = this;
 
-	if (self.state === 'ended') return self;
+	//plan invokation of end
+	self._tasks.push(function () {
+		if (this.state === 'ended') return;
 
-	//FIXME quite ugly check.
-	//`Transform.prototype.end` below calls `end` for all the further piped streams
-	//and if they are also audio-through, they have non-zero `inputCount`
-	//but the cannot be called `end` as such
-	// if (self.inputsCount) {
-	// 	if (self._processCb) {
-			// return self.error('Cannot end non-source stream.');
-	// 	}
-	// }
+		this.state = 'ended';
+		Transform.prototype.end.call(this);
+		this.emit('end');
+		this.log('end');
 
-	self.state = 'ended';
-
-	//release callback, if any
-	// self._handleResult(chunk);
-
-	Transform.prototype.end.call(this);
-	// self.log('ended');
-
-	self.emit('end');
-
-	//FIXME: the case for that is being connected to simple streams
-	//this causes them throw error of after-write, weird.
-	//From the other side, unconnecting turns prev stream into a sink, which is bad
-	// self.unpipe();
+		//FIXME: the case for that is being connected to simple streams
+		//this causes them throw error of after-write, weird.
+		this.unpipe();
+	});
 
 	return self;
 };
 
 
-
-
 /**
- * WAA conventional methods to control stream.
+ * Just call the tasks
  */
-Through.prototype.start = function () {
-
+Through.prototype.doTasks = function () {
+	var self = this;
+	var task;
+	while(task = self._tasks.shift()) {
+		task.call(self);
+	}
+	return self;
 };
-
-Through.prototype.stop = function () {
-
-};
-
 
 
 /**
@@ -372,7 +366,7 @@ Through.prototype.error = function (error) {
 	//ensure error format
 	error = error instanceof Error ? error : Error(error);
 
-	console.error(self.pfx(), chalk.red(error.message));
+	console.error(pfx(self), chalk.red(error.message));
 
 	return self;
 };
@@ -385,7 +379,7 @@ Through.prototype.log = function () {
 	var self = this;
 	var args = [].slice.call(arguments);
 	var str = [].join.call(args, ' ');
-	console.log(self.pfx(), str);
+	console.log(pfx(self), str);
 	return self;
 };
 
@@ -393,8 +387,7 @@ Through.prototype.log = function () {
 /**
  * Return prefix for logging
  */
-Through.prototype.pfx = function () {
-	var self = this;
+function pfx (self) {
 	return chalk.gray('#' + self._id + ' ' + (now() - self._creationTime).toFixed(0) + 'ms');
 };
 
@@ -418,8 +411,7 @@ Through.prototype.pfx = function () {
  * Basically provides a chunk with data and expects user to fill that.
  * If returned a promise, then will wait till it is resolved.
  */
-Through.prototype.process = function (buffer) {
-};
+Through.prototype.process = function (buffer) {};
 
 
 /**
@@ -427,45 +419,24 @@ Through.prototype.process = function (buffer) {
  */
 Through.prototype._process = function (buffer, cb) {
 	var self = this;
-	// self.log('_call', self.state)
-
-	//handle throttling
-	//if is paused - plan processing after being release
-	//FIXME: potential issue if lots of _processes being called during the pause
-	//as such it is placing work of buffers to the events stack.
-	// if (self._throttleTimeout) {
-	// 	if (!self._plannedCall) {
-	// 		self._plannedCall = true;
-	// 		self.once('unblock', function () {
-	// 			self._process(buffer, cb);
-	// 		});
-	// 	}
-	// 	return;
-	// }
-
-	// self._plannedCall = false;
 
 	//ensure buffer is AudioBuffer
-	//FIXME: detect passed buffer format - not necessarily planar/2/etc
 	if (!isAudioBuffer(buffer)) buffer = pcm.toAudioBuffer(buffer, self);
+
+	//provide hook
+	self.emit('beforeProcess', buffer);
 
 	//send buffer to processor
 	//NOTE: why not promise? promise causes processor tick between executor and `then`.
 	//if expected more than one argument - make execution async (like mocha)
-	//also if no outputs - force awaiting the callback
-	if (!self.outputsCount || self.process.length === 2) {
+	//also if it lost sink virginity - force awaiting the callback (no sinks by default)
+	if (!self.sink || self.process.length === 2) {
 		self.process(buffer, _handleResult);
 		return;
 	}
 
 	//otherwise - do sync processing
 	var result = self.process(buffer);
-
-	//if ended during the processing - just clear everything, ignore the chunk, as it is not actual anymore
-	//FIXME: plan end, do not force it
-	// if (self.state === 'ended') {
-	// 	return;
-	// }
 
 	_handleResult(result);
 
@@ -484,39 +455,24 @@ Through.prototype._process = function (buffer, cb) {
 			return;
 		}
 
-		//if the state changed during the processing, like, end called - ignore cb
-		//FIXME: test out other cases here, not only `ended` state
-		// if (self.state === 'ended') {
-		// 	return;
-		// }
-
 		//update counters
 		self.count += result.length;
 		self.time = self.count / self.sampleRate;
 
-		//TODO: detect whether we need to cast audioBuffer to buffer (connected 2 at least one plain stream)
+		//provide hook
+		self.emit('afterProcess', result);
+
 		if (!self.writableObjectMode && isAudioBuffer(result)) {
 			result = pcm.toBuffer(result, self);
 		}
 
-		//if throttling - wait to release
-		// if (self.throttle != null) {
-		// 	self._throttleTimeout = setTimeout(function () {
-		// 		self._throttleTimeout = null;
-		// 		cb(result);
-		// 	}, self.throttle);
-		// } else {
+		//release data
 		cb(result);
-		// }
 
-		// if (self._isFull) {
-		// 	self._isFull = false;
-		// 	self.emit('unblock');
-		// }
+		//do planned tasks, if any
+		self.doTasks();
 	};
 };
-
-
 
 
 /**
@@ -524,8 +480,6 @@ Through.prototype._process = function (buffer, cb) {
  */
 Through.prototype._transform = function (chunk, enc, cb) {
 	var self = this;
-
-	// self.log('_transform');
 
 	//ignore bad states
 	if (self.state === 'ended') return;
@@ -542,20 +496,10 @@ Through.prototype._transform = function (chunk, enc, cb) {
 Through.prototype._read = function (size) {
 	var self = this;
 
-
-	// if (self._isFull) return;
-
-	//ignore bad states
-	if (self.state === 'ended') {
-		return;
-	}
-
 	//in-middle case - be a transformer
 	if (self.inputsCount) {
 		return Transform.prototype._read.call(self, size);
 	}
-
-	// self.log('_read');
 
 	//create buffer of needed size
 	var buffer = new AudioBuffer(self.samplesPerFrame);
