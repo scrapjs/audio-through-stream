@@ -1,4 +1,4 @@
-Through stream for audio processing. Optimized to handle audio-data by sharing _AudioBuffer_s between streams instead of copying _Buffer_s, uses zero-buffering to avoid delays, provides simple interface to control the flow pressure, e. g. to bind processing to the real time or to easily debug values.
+Through stream for audio processing. Optimized to handle audio-data by sharing _AudioBuffer_ between streams instead of copying _Buffer_, uses zero-buffering to avoid delays, provides simple interface to control the flow pressure, e. g. to bind processing to the real time or to easily debug values.
 
 
 ## Usage
