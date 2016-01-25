@@ -1,4 +1,4 @@
-Through stream for audio processing.
+Through stream for audio processing. Optimized to handle audio-data by sharing _AudioBuffer_s between streams instead of copying _Buffer_s, uses zero-buffering to avoid delays, provides simple interface to control the flow pressure, e. g. to bind processing to the real time or to easily debug values.
 
 
 ## Usage
@@ -7,18 +7,17 @@ Through stream for audio processing.
 
 ```js
 var Through = require('audio-through');
-var Speaker = require('speaker');
 var util = require('audio-buffer-utils');
-var AudioBuffer = require('audio-buffer');
+var Speaker = require('speaker');
 
-//generator
+//generate noise
 Through(util.noise)
 
-//processor
+//decrease volume
 .pipe(Through(function (buffer) {
 	var volume = 0.2;
 
-	return util.map(buffer, function (sample) {
+	util.fill(buffer, function (sample) {
 		return sample * volume;
 	});
 }))
@@ -30,9 +29,7 @@ Through(util.noise)
 ## API
 
 ```js
-//Create new audio node instance with passed options
-var audioNode = new Through(
-	//Main processing function.
+var through = new Through(
 	//`buffer` is an instance of AudioBuffer, used as input-output.
 	//If other buffer is returned, it will replace the `buffer`.
 	//If `done` argument is expected - the processor will wait for it to be executed,
@@ -55,19 +52,19 @@ var audioNode = new Through(
 );
 
 //End stream, optionally sending final data
-audioNode.end();
+through.end();
 
 //Throw error, not breaking the pipe
-audioNode.error(error|string);
+through.error(error|string);
 
 //Log buffer-related info
-audioNode.log(string);
+through.log(string);
 
 //Current state: normal, paused, ended, muted, solo, error
-audioNode.state;
+through.state;
 
 
-audioNode
+through
 
 //invoke before processing the chunk
 .on('beforeProcess')
