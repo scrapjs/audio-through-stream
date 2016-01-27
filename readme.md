@@ -46,10 +46,10 @@ var through = new Through(
     //number of sample-frames processed
     this.count;
 
-    //If time of the current chunk is more than 3s, stop generation
-    if (this.time > 3) this.end();
+    //If time of the current chunk is more than 3s, end stream
+    if (this.time > 3) return null;
 
-    //simple throttling
+    //simple throttling for debug
     setTimeout(done, 100);
   },
 

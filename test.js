@@ -12,7 +12,7 @@ var assert = require('assert');
 var Stream = require('stream');
 var inherits = require('inherits');
 var extend = require('xtend/mutable');
-var test = require('tst')//.only();
+var test = require('tst').only();
 // var test = it;
 
 
@@ -257,4 +257,18 @@ test.skip('pause/resume', function () {
 
 test.skip('end', function () {
 
+});
+
+test.only('returning null stops stream', function (done) {
+	var count = 0;
+	Through(function () {
+		if ( count >= 2 ) return null;
+	})
+	.on('end', function () {
+		assert.equal(count, 2);
+		done();
+	})
+	.pipe(Sink(function () {
+		count++;
+	}));
 });

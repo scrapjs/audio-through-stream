@@ -423,6 +423,11 @@ Through.prototype._process = function (buffer, cb) {
 	_handleResult(result);
 
 	function _handleResult (result) {
+		//if result is null - just finish the processing
+		if (result === null) {
+			return self.end().doTasks();
+		}
+
 		//if no return - then user is wisely just modified input buffer
 		if (!result) {
 			result = buffer;
