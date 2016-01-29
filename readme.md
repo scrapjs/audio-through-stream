@@ -51,7 +51,7 @@ var through = new Through(
 
     //simple throttling for debug
     setTimeout(done, 100);
-  },
+  }?,
 
   //Optional buffer format to use when connected to raw streams, like `node-speaker`.
   //If undefined, pcm default format is used.

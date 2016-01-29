@@ -61,9 +61,14 @@ function Through (fn, options) {
 	// //table of scheduled events
 	// self._schedule = [];
 
-	//redefine _process method
-	if (fn) {
-		self.process = fn;
+	//handle options
+	options = options || {};
+
+	if (typeof fn === 'function') {
+		options.process = fn;
+	}
+	else {
+		options = fn;
 	}
 
 	//take over options, mostly the format ones
