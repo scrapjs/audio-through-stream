@@ -498,7 +498,8 @@ Through.prototype._read = function (size) {
 	var self = this;
 
 	//in-middle case - be a transformer
-	if (self.inputsCount) {
+	//note that once it was a transformer - it will always remain a transformer
+	if (self.inputsCount || !self.isSource) {
 		return Transform.prototype._read.call(self, size);
 	}
 

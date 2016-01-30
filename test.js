@@ -317,3 +317,21 @@ test('convert pcm format', function (done) {
 		}
 	}));
 });
+
+
+test('through-to-through', function () {
+	Through(function () {
+		if (this.time > 0.1) {
+			return null;
+		}
+	})
+	.pipe(Through(
+		function (chunk) {
+		}
+	))
+	.pipe(Writable({
+		write: function (chunk, enc, cb) {
+			setTimeout(cb, 0);
+		}
+	}))
+});
