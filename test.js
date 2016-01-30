@@ -214,14 +214,19 @@ test('throttle destination', function (done) {
 		// console.log('Generated', this.time);
 		input.time = this.time;
 	})
-	.pipe(Through())
+	.pipe(Through(
+		function (input) {}
+	))
 	.pipe(Through(function (input, done) {
 		// console.log('Received', input.time);
 		count++;
 
-		if (this.count > 3000) this.end();
+		if (this.count > 3000) {
+			this.end();
+		}
 
-		setTimeout(done, 50);
+		done();
+		// setTimeout(done, 50);
 	}))
 	.on('end', function () {
 		assert.equal(count, 4);
@@ -284,7 +289,6 @@ test('convert pcm format', function (done) {
 
 	Readable({
 		read: function (size) {
-
 			var arr = new Float32Array(1024);
 			arr.fill(1);
 			var aBuf = new AudioBuffer(1, arr);

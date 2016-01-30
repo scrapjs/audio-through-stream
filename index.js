@@ -93,6 +93,10 @@ function Through (fn, options, outputFormat) {
 	//manage input pipes number
 	self.on('pipe', function (source) {
 		self.inputsCount++;
+
+		//loose source virginity
+		if (self.isSource) self.isSource = false;
+
 	}).on('unpipe', function (source) {
 		self.inputsCount--;
 	});
@@ -141,7 +145,7 @@ Through.prototype.pipe = function (to) {
 	}
 
 	//loose sink virginity
-	if (!self.sink) self.sink = false;
+	if (self.isDestination) self.isDestination = false;
 
 	return Transform.prototype.pipe.call(self, to);
 };
@@ -154,10 +158,16 @@ Through.prototype.writableObjectMode = true;
 
 
 /**
- * Indicator of whether it is sink.
+ * Indicator of whether should be a sink.
  * Automatically set to false once the stream is connected to anything.
  */
-Through.prototype.sink = true;
+Through.prototype.isDestination = true;
+
+/**
+ * Indicator whether it is a source
+ * Auto-set to false once anything is connected to the stream.
+ */
+Through.prototype.isSource = true;
 
 
 /**
@@ -414,8 +424,8 @@ Through.prototype._process = function (buffer, cb) {
 	//send buffer to processor
 	//NOTE: why not promise? promise causes processor tick between executor and `then`.
 	//if expected more than one argument - make execution async (like mocha)
-	//also if it lost sink virginity - force awaiting the callback (no sinks by default)
-	if (!self.sink || self.process.length === 2) {
+	//also if it not source and not destination with one arg - force awaiting the callback (no sinks by default)
+	if (self.process.length === 2 || (!self.outputsCount && !self.isDestination) ) {
 		self.process(buffer, _handleResult);
 		return;
 	}
