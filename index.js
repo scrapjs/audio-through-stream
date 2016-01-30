@@ -19,6 +19,11 @@ module.exports = Through;
 
 var streamCount = 0;
 
+/**
+ * Display logs in console
+ */
+Through.log = false;
+
 
 /**
  * Create stream instance
@@ -172,28 +177,6 @@ extend(Through.prototype, pcm.defaults);
 Through.prototype.state = undefined;
 
 
-/**
- * TODO: Plan callback on time or event
- */
-// Through.prototype.on = function (time, cb) {
-// 	var self = this;
-
-// 	//if number - plan timed event
-// 	if (typeof time === 'number') {
-// 		var idx = find(this._plan, function (el, i) {
-// 			return el[0] > time;
-// 		});
-// 		if (!idx) idx =
-// 		this._plan.splice(idx, 0, [time, cb]);
-// 	}
-// 	//simple on
-// 	else {
-// 		self.on(time, cb);
-// 	}
-
-// 	return self;
-// };
-
 
 
 /**
@@ -211,20 +194,26 @@ Through.prototype.state = undefined;
 // };
 
 
-/**
- * TODO: Cancel planned callback/event
- */
-// Through.prototype.off = function (event, cb) {
-// 	var self = this;
-
-// 	self.removeListeners(event, cb);
-// };
-
 
 /**
  * TODO: Cancel planned time callback
  */
 // Through.prototype.cancel = function (time, cb) {
+// };
+
+
+
+/**
+ * TODO: Fade out the node
+ */
+// Through.prototype.mute = function () {
+// };
+
+
+/**
+ * TODO: Fade out all other nodes
+ */
+// Through.prototype.solo = function () {
 // };
 
 
@@ -361,6 +350,8 @@ Through.prototype.doTasks = function () {
  * Throw inobstructive error. Does not stop stream.
  */
 Through.prototype.error = function (error) {
+	if (!Through.log) return self;
+
 	var self = this;
 
 	//ensure error format
@@ -379,6 +370,8 @@ Through.prototype.error = function (error) {
  * Same as error, but for logging purposes
  */
 Through.prototype.log = function () {
+	if (!Through.log) return self;
+
 	var self = this;
 	var args = [].slice.call(arguments);
 	var str = [].join.call(args, ' ');
@@ -394,19 +387,6 @@ function pfx (self) {
 	return chalk.gray('#' + self._id + ' ' + (now() - self._creationTime).toFixed(0) + 'ms');
 };
 
-
-/**
- * TODO: Fade out the node
- */
-// Through.prototype.mute = function () {
-// };
-
-
-/**
- * TODO: Fade out all other nodes
- */
-// Through.prototype.solo = function () {
-// };
 
 
 /**

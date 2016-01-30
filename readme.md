@@ -1,12 +1,14 @@
 Through stream for audio processing.
 
-* Shares _AudioBuffer_ between streams instead of copying _Buffer_.
-* Uses zero-buffering to avoid delays.
-* Provides easy way to control the flow pressure, e. g. to bind processing to the real time, easily debug chunks, outsource processing to shaders/webworkers/audio-workers, etc.
+* Compatible with node-streams.
+* Can be piped right to [speaker](https://npmjs.org/package/speaker).
+* Shares _AudioBuffer_ between streams instead of copying _Buffer_, which is 0-overhead.
+* Uses zero-watermarks to avoid output delays.
+* Provides an easy way to control the flow pressure, e. g. to bind processing to the real time, debug chunks, outsource processing to shaders/webworkers/audio-workers, etc.
 * Provides debugging facilities.
 * Provides simple audio data metrics.
-* Compatible with node-streams.
 * Can be used as a _Readable_, _Transform_ or _Writable_ stream.
+* WIP: .plan method to schedule events by audio-time.
 
 
 ## Usage
@@ -76,10 +78,14 @@ through.state;
 through.on('beforeProcess', function (buffer) {})
 
 //call after processing the chunk
-.on('afterProcess', function (buffer) {})
+.on('afterProcess', function (buffer) {});
+
+
+//Set true to display stream logs/errors in console
 ```
 
 ## Related
 
 > [audio-buffer-utils](https://npmjs.org/package/audio-buffer-utils) — set of utils for audio buffers processing.<br/>
 > [audio-buffer](https://github.com/audio-lab/buffer) — interface for any audio data holder.<br/>
+> [audio-generator](https://github.com/audio-lab/audio-generator) — useful periodic signal generator stream.

@@ -13,7 +13,9 @@ var Stream = require('stream');
 var inherits = require('inherits');
 var extend = require('xtend/mutable');
 var test = require('tst')//.only();
-// var test = it;
+
+
+Through.log = true;
 
 
 
