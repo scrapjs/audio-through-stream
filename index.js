@@ -368,6 +368,9 @@ Through.prototype.error = function (error) {
 
 	console.error(pfx(self), chalk.red(error.message));
 
+	//emit error event
+	self.emit('error', error);
+
 	return self;
 };
 
