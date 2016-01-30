@@ -318,8 +318,14 @@ Through.prototype.end = function () {
 		if (this.state === 'ended') return;
 
 		this.state = 'ended';
+
+		var triggered = false;
+		this.once('ended', function () {
+			triggered = true;
+		});
 		Transform.prototype.end.call(this);
-		this.emit('end');
+		!triggered && this.emit('end');
+
 		this.log('end');
 
 		//FIXME: the case for that is when being connected to simple streams
