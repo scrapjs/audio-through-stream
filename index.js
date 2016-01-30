@@ -30,8 +30,8 @@ Through.log = false;
  *
  * @constructor
  */
-function Through (fn, options) {
-	if (!(this instanceof Through)) return new Through(fn, options);
+function Through (fn, options, outputFormat) {
+	if (!(this instanceof Through)) return new Through(fn, options, outputFormat);
 
 	var self = this;
 
@@ -66,21 +66,29 @@ function Through (fn, options) {
 	// //table of scheduled events
 	// self._schedule = [];
 
-	//handle options
+	//handle options - which are the input format as well
 	options = options || {};
 
 	if (typeof fn === 'function') {
 		options.process = fn;
 	}
+	//shift arguments (format-transform stream)
 	else {
-		options = fn;
+		outputFormat = options || {};
+		options = fn || {};
 	}
 
-	//take over options, mostly the format ones
+	//ensure input format
+	if (!options.inputFormat) options.inputFormat = pcm.format(options);
+	pcm.normalize(options.inputFormat);
+
+	//ensure output format
+	if (!outputFormat) options.outputFormat = options.inputFormat;
+	else options.outputFormat = pcm.normalize(outputFormat);
+
+	//take over options,
 	extend(self, options);
 
-	//normalize format
-	pcm.normalize(self);
 
 	//manage input pipes number
 	self.on('pipe', function (source) {
@@ -150,12 +158,6 @@ Through.prototype.writableObjectMode = true;
  * Automatically set to false once the stream is connected to anything.
  */
 Through.prototype.sink = true;
-
-
-/**
- * PCM-stream buffer format to parse from input or cast to output
- */
-extend(Through.prototype, pcm.defaults);
 
 
 /**
@@ -404,7 +406,7 @@ Through.prototype._process = function (buffer, cb) {
 	var self = this;
 
 	//ensure buffer is AudioBuffer
-	if (!isAudioBuffer(buffer)) buffer = pcm.toAudioBuffer(buffer, self);
+	if (!isAudioBuffer(buffer)) buffer = pcm.toAudioBuffer(buffer, self.inputFormat);
 
 	//provide hook
 	self.emit('beforeProcess', buffer);
@@ -445,14 +447,14 @@ Through.prototype._process = function (buffer, cb) {
 
 		//update counters
 		self.count += result.length;
-		self.time = self.count / self.sampleRate;
+		self.time = self.count / self.inputFormat.sampleRate;
 
 		//provide hook
 		self.emit('afterProcess', result);
 
 		//convert to buffer, if at least one output is natural node-stream
 		if (!self.writableObjectMode && isAudioBuffer(result)) {
-			result = pcm.toBuffer(result, self);
+			result = pcm.toBuffer(result, self.outputFormat);
 		}
 
 		//release data
@@ -491,7 +493,7 @@ Through.prototype._read = function (size) {
 	}
 
 	//create buffer of needed size
-	var buffer = new AudioBuffer(self.samplesPerFrame);
+	var buffer = new AudioBuffer(self.outputFormat.samplesPerFrame);
 
 	//generate new chunk with silence
 	self._process(buffer, function (result) {

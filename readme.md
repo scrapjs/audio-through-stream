@@ -55,9 +55,10 @@ var through = new Through(
     setTimeout(done, 100);
   }?,
 
-  //Optional buffer format to use when connected to raw streams, like `node-speaker`.
-  //If undefined, pcm default format is used.
-  format?
+  //Optional buffer formats to use when connected to raw streams, like `node-speaker`.
+  //By undefined, pcm-util default format is used.
+  inputFormat?,
+  outputFormat?
 );
 
 //End stream

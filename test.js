@@ -12,6 +12,8 @@ var assert = require('assert');
 var Stream = require('stream');
 var inherits = require('inherits');
 var extend = require('xtend/mutable');
+var Readable = require('stream').Readable;
+var Writable = require('stream').Writable;
 var test = require('tst')//.only();
 
 
@@ -261,7 +263,7 @@ test.skip('end', function () {
 
 });
 
-test.only('returning null stops stream', function (done) {
+test('returning null stops stream', function (done) {
 	var count = 0;
 	Through(function () {
 		if ( count >= 2 ) return null;
@@ -272,5 +274,42 @@ test.only('returning null stops stream', function (done) {
 	})
 	.pipe(Sink(function () {
 		count++;
+	}));
+});
+
+test('convert pcm format', function (done) {
+	this.timeout(Infinity);
+
+	var n = 0;
+
+	Readable({
+		read: function (size) {
+
+			var arr = new Float32Array(1024);
+			arr.fill(1);
+			var aBuf = new AudioBuffer(1, arr);
+
+			var buf = pcm.toBuffer(aBuf, {
+				float: true
+			});
+
+			if (n++ > 10) return this.push(null);
+			this.push(buf);
+		}
+	})
+	.on('end', done)
+	.pipe(Through({
+		channels: 1,
+		float: true
+	}, {
+		channels: 1,
+		float: false
+	}))
+	.pipe(Writable({
+		write: function (chunk, enc, cb) {
+			assert.equal(chunk.readInt16LE(0), 32767);
+			cb();
+			// setTimeout(cb, 1000);
+		}
 	}));
 });
