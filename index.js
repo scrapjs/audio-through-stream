@@ -320,11 +320,18 @@ Through.prototype.end = function () {
 		this.state = 'ended';
 
 		var triggered = false;
-		this.once('ended', function () {
+		this.once('end', function () {
 			triggered = true;
 		});
 		Transform.prototype.end.call(this);
-		!triggered && this.emit('end');
+
+		//timeout cb, because native end emits after a tick
+		var that = this;
+		setTimeout(function () {
+			if (!triggered) {
+				that.emit('end');
+			}
+		});
 
 		this.log('end');
 
