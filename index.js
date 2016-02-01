@@ -459,7 +459,7 @@ Through.prototype._process = function (buffer, cb) {
 		self.count += result.length;
 		self.time = self.count / self.inputFormat.sampleRate;
 
-		//provide hook
+		//hook
 		self.emit('afterProcess', result);
 
 		//convert to buffer, if at least one output is natural node-stream

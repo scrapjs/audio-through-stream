@@ -56,13 +56,11 @@ var through = new Through(
   }?,
 
   //Optional buffer formats to use when connected to raw streams, like `node-speaker`.
-  //By undefined, pcm-util default format is used.
+  //By default, pcm-util default format is used.
   inputFormat?,
   outputFormat?
 );
 
-//End stream
-through.end();
 
 //Throw error, not breaking the pipe
 through.error(error|string);
@@ -70,23 +68,13 @@ through.error(error|string);
 //Log buffer-related info
 through.log(string);
 
-//Current state: normal, paused, ended, muted, solo, error
-through.state;
-
-
-
-//invoke before processing the chunk
-through.on('beforeProcess', function (buffer) {})
-
-//call after processing the chunk
-.on('afterProcess', function (buffer) {});
-
-
-//Set true to display stream logs/errors in console
+//Set true to display stream logs/errors in console. `false` by default.
+Through.log = true;
 ```
 
 ## Related
 
+> [audio-generator](https://github.com/audio-lab/audio-generator) — audio signal generator stream.
+> [audio-speaker](https://github.com/audio-lab/audio-speaker) — output audio stream in browser/node.
 > [audio-buffer-utils](https://npmjs.org/package/audio-buffer-utils) — set of utils for audio buffers processing.<br/>
 > [audio-buffer](https://github.com/audio-lab/buffer) — interface for any audio data holder.<br/>
-> [audio-generator](https://github.com/audio-lab/audio-generator) — useful periodic signal generator stream.
