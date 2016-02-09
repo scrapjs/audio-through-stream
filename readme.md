@@ -48,10 +48,10 @@ var through = new Through(
     //number of sample-frames processed
     this.count;
 
-    //If time of the current chunk is more than 3s, end stream
+    //if the time of current chunk is more than 3s, end stream
     if (this.time > 3) return null;
 
-    //simple throttling for debug
+    //simple throttling for debug, usually `done` is called right away in sync fashion
     setTimeout(done, 100);
   }?,
 
@@ -74,7 +74,8 @@ Through.log = true;
 
 ## Related
 
-> [audio-generator](https://github.com/audio-lab/audio-generator) — audio signal generator stream.
-> [audio-speaker](https://github.com/audio-lab/audio-speaker) — output audio stream in browser/node.
+> [audio-generator](https://github.com/audio-lab/audio-generator) — audio signal generator stream.<br/>
+> [audio-speaker](https://github.com/audio-lab/audio-speaker) — output audio stream in browser/node.<br/>
 > [audio-buffer-utils](https://npmjs.org/package/audio-buffer-utils) — set of utils for audio buffers processing.<br/>
 > [audio-buffer](https://github.com/audio-lab/buffer) — interface for any audio data holder.<br/>
+> [pcm-util](https://npmjs.org/package/pcm-util) — utils for low-level pcm stream tasks.<br/>
