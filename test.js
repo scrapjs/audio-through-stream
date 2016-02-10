@@ -268,14 +268,30 @@ test.skip('end', function () {
 
 });
 
-test('sync/async turns & timeDelta', function (done) {
+test('timeDelta, frameCount and other inner vars', function (done) {
 	this.timeout(10e5);
 
 	Through(function(chunk, done) {
-		assert(this._timeDelta >= 0);
-		assert(this._timeLapse >= 0);
+		assert(this.timeDelta >= 0);
+		assert(this.timeLapse >= 0);
+		assert(this.frame >= 0);
 
+		if (this.frame > 4) {
+			done(null);
+		}
 
+		setTimeout(done, 10);
+	})
+	.on('end', function () {
+		done();
+	})
+	.pipe(Through());
+});
+
+test('sync/async turns', function (done) {
+	this.timeout(10e5);
+
+	Through(function(chunk, done) {
 		if (this.time > 0.1) {
 			return null
 		}

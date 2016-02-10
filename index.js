@@ -58,13 +58,13 @@ function Through (fn, options, outputFormat) {
 	self.time = 0;
 
 	//real time measures
-	self._timeStart = 0;
-	self._timeEnd = 0;
+	self.timeStart = 0;
+	self.timeEnd = 0;
 
 	//how much time it took to process last chunk
-	self._timeDelta = 0;
+	self.timeDelta = 0;
 	//how much time it took from beginning of prev chunk to beginning of a new chunk
-	self._timeLapse = 0;
+	self.timeLapse = 0;
 
 	//passed frames counter
 	self.frame = 0;
@@ -434,8 +434,8 @@ Through.prototype._process = function (buffer, cb) {
 	self.emit('beforeProcess', buffer);
 
 	//update timeLapse as close as possible before processing
-	this._timeLapse = now() - this._timeStart;
-	this._timeStart = now();
+	this.timeLapse = now() - this.timeStart;
+	this.timeStart = now();
 
 	//send buffer to processor - do sync or async altogether, define further steps after
 	//because sync/async can vary
@@ -454,6 +454,9 @@ Through.prototype._process = function (buffer, cb) {
 	_handleResult(result);
 
 	function _handleResult (result) {
+		//ignore double-call of _handleResult (e. g. user mistakenly called 2 times)
+		if (self.state === 'ended') return;
+
 		//if result is null - just finish the processing
 		if (result === null) {
 			return self.end().doTasks();
@@ -474,12 +477,13 @@ Through.prototype._process = function (buffer, cb) {
 		}
 
 		//update counters
+		self.frame++;
 		self.count += result.length;
 		self.time = self.count / self.inputFormat.sampleRate;
 
 		//update time measures
-		self._timeEnd = now();
-		self._timeDelta = self._timeEnd - self._timeStart;
+		self.timeEnd = now();
+		self.timeDelta = self.timeEnd - self.timeStart;
 
 		//hook
 		self.emit('afterProcess', result);
