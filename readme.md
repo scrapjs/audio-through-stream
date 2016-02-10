@@ -48,6 +48,9 @@ var through = new Through(
     //number of sample-frames processed
     this.count;
 
+    //number of frames processed
+    this.frame;
+
     //if the time of current chunk is more than 3s, end stream
     if (this.time > 3) return null;
 
