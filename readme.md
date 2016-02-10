@@ -76,6 +76,7 @@ Through.log = true;
 
 > [audio-generator](https://github.com/audio-lab/audio-generator) — audio signal generator stream.<br/>
 > [audio-speaker](https://github.com/audio-lab/audio-speaker) — output audio stream in browser/node.<br/>
+> [audio-shader](https://github.com/audio-lab/audio-shader) — shader-based audio processing stream.<br/>
+> [audio-buffer](https://github.com/audio-lab/buffer) — audio data holder.<br/>
 > [audio-buffer-utils](https://npmjs.org/package/audio-buffer-utils) — set of utils for audio buffers processing.<br/>
-> [audio-buffer](https://github.com/audio-lab/buffer) — interface for any audio data holder.<br/>
 > [pcm-util](https://npmjs.org/package/pcm-util) — utils for low-level pcm stream tasks.<br/>

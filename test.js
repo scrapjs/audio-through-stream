@@ -1,6 +1,5 @@
 var Through = require('./');
 var ctx = require('audio-context');
-// var Source = require('audio-source');
 // var Speaker = require('audio-speaker');
 var Sink = require('audio-sink');
 var AudioBuffer = require('audio-buffer');
@@ -14,7 +13,7 @@ var inherits = require('inherits');
 var extend = require('xtend/mutable');
 var Readable = require('stream').Readable;
 var Writable = require('stream').Writable;
-var test = require('tst')//.only();
+var test = require('tst');
 
 
 Through.log = true;
@@ -240,6 +239,7 @@ test('beforeProcess, afterProcess hooks', function () {
 
 test('single stream does not start generating, only when piped');
 
+
 test.skip('mute', function () {
 
 });
@@ -266,6 +266,26 @@ test.skip('pause/resume', function () {
 
 test.skip('end', function () {
 
+});
+
+test('sync/async turns & timeDelta', function (done) {
+	this.timeout(10e5);
+
+	Through(function(chunk, done) {
+		assert(this._timeDelta >= 0);
+		assert(this._timeLapse >= 0);
+
+
+		if (this.time > 0.1) {
+			return null
+		}
+
+		setTimeout(done, 10);
+	})
+	.on('end', function () {
+		done();
+	})
+	.pipe(Through());
 });
 
 test('returning null stops stream', function (done) {

@@ -54,8 +54,20 @@ function Through (fn, options, outputFormat) {
 	//passed data count
 	self.count = 0;
 
-	//current processing time
+	//current processing time, in sound time
 	self.time = 0;
+
+	//real time measures
+	self._timeStart = 0;
+	self._timeEnd = 0;
+
+	//how much time it took to process last chunk
+	self._timeDelta = 0;
+	//how much time it took from beginning of prev chunk to beginning of a new chunk
+	self._timeLapse = 0;
+
+	//passed frames counter
+	self.frame = 0;
 
 	//set of tasks to perform
 	self._tasks = [];
@@ -421,17 +433,23 @@ Through.prototype._process = function (buffer, cb) {
 	//provide hook
 	self.emit('beforeProcess', buffer);
 
-	//send buffer to processor
+	//update timeLapse as close as possible before processing
+	this._timeLapse = now() - this._timeStart;
+	this._timeStart = now();
+
+	//send buffer to processor - do sync or async altogether, define further steps after
+	//because sync/async can vary
 	//NOTE: why not promise? promise causes processor tick between executor and `then`.
-	//if expected more than one argument - make execution async (like mocha)
+	var result = self.process(buffer, _handleResult);
+
+	//if expected more than one argument - execution was async (like mocha)
 	//also if it not source and not destination with one arg - force awaiting the callback (no sinks by default)
 	if (self.process.length === 2 || (!self.outputsCount && !self.isDestination) ) {
-		self.process(buffer, _handleResult);
-		return;
+		//but in case if result is not undefined - then it is still sync
+		if (result === undefined) {
+			return self;
+		}
 	}
-
-	//otherwise - do sync processing
-	var result = self.process(buffer);
 
 	_handleResult(result);
 
@@ -458,6 +476,10 @@ Through.prototype._process = function (buffer, cb) {
 		//update counters
 		self.count += result.length;
 		self.time = self.count / self.inputFormat.sampleRate;
+
+		//update time measures
+		self._timeEnd = now();
+		self._timeDelta = self._timeEnd - self._timeStart;
 
 		//hook
 		self.emit('afterProcess', result);
