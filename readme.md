@@ -38,6 +38,8 @@ Through(util.noise)
 
 ## API
 
+### Create instance
+
 ```js
 var through = new Through(
   //`buffer` is an instance of AudioBuffer, used as input-output.
@@ -56,12 +58,12 @@ var through = new Through(
 
     //simple throttling for debug, usually `done` is called right away in sync fashion
     setTimeout(done, 100);
-  }?,
+
+  },
 
   //Optional buffer formats to use when connected to raw streams, like `node-speaker`.
   //By default, pcm-util default format is used.
-  inputFormat?,
-  outputFormat?
+  options?
 );
 
 
@@ -74,6 +76,23 @@ through.log(string);
 //Set true to display stream logs/errors in console. `false` by default.
 Through.log = true;
 ```
+
+
+### Inherit
+
+```js
+function MyProcessor (opts) {
+  Through.call(this, null, opts);
+};
+
+inherit(MyProcessor, Through);
+
+
+MyProcessor.prototype.process = function (buffer, done) {
+  //modifying buffer code
+};
+```
+
 
 ## Related
 

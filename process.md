@@ -8,18 +8,22 @@
 
 ## Questions
 
+* Why inputFormat/outputFormat, why not just options with format props?
+	* If user needs converting - let him convert buffer manually.
 * Should we use options object?
 	* + useful for throttle
 		* - throttle is better done by async callback expected
 	* + useful for sink
 		* - sink is detected from the type of the arguments in processing fn
 	* + useful to define [ouput] format, if connected to some other real nodes
+	* + ✔ natural convention `through what and how`
 * audio-through cannot be a sink in sense it cannot release data without user’s control.
 	* Otherwise, any node in-between(transformer), being disconnected, becomes a sink, non-regulated.
 * So, what format of process is better: 1 audioProcessEvent, 2 inputBuffer or 3 node-like style?
 	* 1 + it may contain various addiotional info like time of the event, so we should not guess on the environment
 	* 1 + it might be conventional with worker
 	* 1 - it is still not fully conventional, not with worker nor with node
+	* 1 - it is slow as object containing data is worse than just data
 	* 2 + it is simply obvious
 	* 2 - confusing convention (there are no such one)
 	* 3 + it is conventional, just a specific kind of a transform stream
@@ -56,6 +60,7 @@
 			* ✔ Ok, that seems the less controversial, ok?
 
 * ✔ No promises. Handling is bound to realtime, if promise will block handling or streaming - it is prone to errors. If you need async handling -
+	* Though we want to render later sometimes - like, slow shaders and stuff. Just let speaker wait.
 * ✔ Seems that we need to have output buffer: if we change the input buffer, in other [piped out] nodes it will be also changed, as we send it by reference. So our output buffer should be different.
 * Whether the scriptNode is better than pooling transformers on AudioBufferSource?
 	* In the main thread there is only mixing should happen, mixing of N audio buffers. Each audioBuffer should be processed in a separate stream - AudioWorker, AudioShader, OfflineContext, main thread etc. Each that buffer should be formed by slices in a separate memory thread, and that is what AudioNode for. It takes input, processes it (in case of threads it is async), returns it changed, i. e. puts the result in provided (actual) buffer, if not too late. It does not block the stream therefore (piping).

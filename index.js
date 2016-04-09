@@ -30,8 +30,8 @@ Through.log = false;
  *
  * @constructor
  */
-function Through (fn, options, outputFormat) {
-	if (!(this instanceof Through)) return new Through(fn, options, outputFormat);
+function Through (fn, options) {
+	if (!(this instanceof Through)) return new Through(fn, options);
 
 	var self = this;
 
@@ -57,15 +57,6 @@ function Through (fn, options, outputFormat) {
 	//current processing time, in sound time
 	self.time = 0;
 
-	//real time measures
-	self.timeStart = 0;
-	self.timeEnd = 0;
-
-	//how much time it took to process last chunk
-	self.timeDelta = 0;
-	//how much time it took from beginning of prev chunk to beginning of a new chunk
-	self.timeLapse = 0;
-
 	//passed frames counter
 	self.frame = 0;
 
@@ -86,17 +77,14 @@ function Through (fn, options, outputFormat) {
 	}
 	//shift arguments (format-transform stream)
 	else {
-		outputFormat = options || {};
+		format = options || {};
 		options = fn || {};
 	}
 
 	//ensure input format
-	if (!options.inputFormat) options.inputFormat = pcm.format(options);
-	pcm.normalize(options.inputFormat);
-
-	//ensure output format
-	if (!outputFormat) options.outputFormat = options.inputFormat;
-	else options.outputFormat = pcm.normalize(outputFormat);
+	var format = pcm.format(options);
+	pcm.normalize(format);
+	options.format = format;
 
 	//take over options,
 	extend(self, options);
@@ -326,7 +314,7 @@ Through.prototype.isPaused = function (time) {
 Through.prototype.end = function () {
 	var self = this;
 
-	//plan invokation of end
+	//plan invocation of end
 	self._tasks.push(function () {
 		if (this.state === 'ended') return;
 
@@ -350,6 +338,7 @@ Through.prototype.end = function () {
 
 		//FIXME: the case for that is when being connected to simple streams
 		//this causes them throw error of after-write, weird.
+		//I seems to be not the only who faced with that: https://twitter.com/yoshuawuyts/status/718256330197348356
 		this.unpipe();
 	});
 
@@ -428,14 +417,10 @@ Through.prototype._process = function (buffer, cb) {
 	var self = this;
 
 	//ensure buffer is AudioBuffer
-	if (!isAudioBuffer(buffer)) buffer = pcm.toAudioBuffer(buffer, self.inputFormat);
+	if (!isAudioBuffer(buffer)) buffer = pcm.toAudioBuffer(buffer, self.format);
 
 	//provide hook
 	self.emit('beforeProcess', buffer);
-
-	//update timeLapse as close as possible before processing
-	this.timeLapse = now() - this.timeStart;
-	this.timeStart = now();
 
 	//send buffer to processor - do sync or async altogether, define further steps after
 	//because sync/async can vary
@@ -479,18 +464,14 @@ Through.prototype._process = function (buffer, cb) {
 		//update counters
 		self.frame++;
 		self.count += result.length;
-		self.time = self.count / self.inputFormat.sampleRate;
-
-		//update time measures
-		self.timeEnd = now();
-		self.timeDelta = self.timeEnd - self.timeStart;
+		self.time = self.count / self.format.sampleRate;
 
 		//hook
 		self.emit('afterProcess', result);
 
 		//convert to buffer, if at least one output is natural node-stream
 		if (!self.writableObjectMode && isAudioBuffer(result)) {
-			result = pcm.toBuffer(result, self.outputFormat);
+			result = pcm.toBuffer(result, self.format);
 		}
 
 		//release data
@@ -530,7 +511,7 @@ Through.prototype._read = function (size) {
 	}
 
 	//create buffer of needed size
-	var buffer = new AudioBuffer(self.outputFormat.samplesPerFrame);
+	var buffer = new AudioBuffer(self.format.samplesPerFrame);
 
 	//generate new chunk with silence
 	self._process(buffer, function (result) {

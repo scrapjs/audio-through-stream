@@ -268,7 +268,7 @@ test.skip('end', function () {
 
 });
 
-test('timeDelta, frameCount and other inner vars', function (done) {
+test.skip('timeDelta, frameCount and other inner vars', function (done) {
 	this.timeout(10e5);
 
 	Through(function(chunk, done) {
@@ -318,7 +318,9 @@ test('returning null stops stream', function (done) {
 	}));
 });
 
-test('convert pcm format', function (done) {
+test.skip('convert pcm format', function (done) {
+	//that is the only use-case for the bad API with input/output format.
+	//if user need transformations - let he use pcm-transform or alike.
 	this.timeout(Infinity);
 
 	var n = 0;
