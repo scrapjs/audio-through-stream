@@ -20,11 +20,13 @@ Through stream for audio processing.
 var Through = require('audio-through');
 var util = require('audio-buffer-utils');
 var Speaker = require('speaker');
+var context = require('audio-context');
+
 
 var through = new Through(function (buffer, done?) {
-    //returning null ends stream
-    if (this.time > 3) return null;
+    if (this.time > 3) return this.end();
 
+    //decrease volume
     var volume = 0.2;
 
     util.fill(buffer, function (sample) {
@@ -33,8 +35,14 @@ var through = new Through(function (buffer, done?) {
 
     cb(null, buffer);
   }, {
-    //automatically act as generator if piped anywhere
+    //act as a generator readable stream if connected outwards but not connected inwards
     gnerator: true,
+
+    //act as a sink writable stream if not connected outwards but connected inwards
+    sink: true,
+
+    //WAA context, optional — in case if supposed to connect to AudioNodes
+    context: context,
 
     //pcm options, in case if connected to raw output stream
     sampleRate: 44100,
@@ -43,15 +51,24 @@ var through = new Through(function (buffer, done?) {
   }
 );
 
+//Pipe to/from stream
+through.pipe(Speaker());
+
+//Connect to WAA
+through.connect(context.destination);
+
+//Event hooks
+through.on('beforeProcess', function (buffer) {});
+through.on('afterProcess', function (result) {});
+
+//End stream
+through.end();
 
 //Throw error, not breaking the pipe
 through.error(error|string);
 
-//Log buffer-related info
+//Log with additional data
 through.log(string);
-
-//Set true to display stream logs/errors in console. `false` by default.
-Through.log = true;
 ```
 
 Through constructor takes `process` function and `options` arguments.
@@ -68,22 +85,6 @@ Processor function has varialbes at command:
 * `this.count` — number of processed samples.
 * `this.frame` — number of processed frames (chunks).
 * `this.time` — time of the beginning of current chunk, in seconds.
-* `this.sampleRate`, `this.channels`, `this.samplesPerFrame` — params of audio-stream, see [pcm-util](http://npmjs.org/package/pcm-util) for complete list.
-
-### Inherit
-
-```js
-function MyProcessor (opts) {
-  Through.call(this, null, opts);
-};
-
-inherit(MyProcessor, Through);
-
-
-MyProcessor.prototype.process = function (buffer, done) {
-  //modifying buffer code
-};
-```
 
 
 ## Related

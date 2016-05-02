@@ -396,7 +396,7 @@ test('various frame size', function () {
 	}))
 });
 
-test.only('no autogenerator', function (done) {
+test('no autogenerator', function (done) {
 	var count = 0;
 
 	Through(function (buffer) {
@@ -408,7 +408,7 @@ test.only('no autogenerator', function (done) {
 	}));
 
 	setTimeout(function () {
-		assert.equal(count, 2);
+		assert.equal(count, 0);
 		done();
 	}, 100);
 });

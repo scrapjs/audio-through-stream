@@ -96,7 +96,7 @@ function Through (fn, options) {
 		self.inputsCount++;
 
 		//loose source virginity
-		if (self.isSource) self.isSource = false;
+		if (self.generator) self.generator = false;
 
 	}).on('unpipe', function (source) {
 		self.inputsCount--;
@@ -145,8 +145,8 @@ Through.prototype.pipe = function (to) {
 		self.writableObjectMode = false;
 	}
 
-	//loose sink virginity
-	if (self.isDestination) self.isDestination = false;
+	//lose sink virginity
+	if (self.sink) self.sink = false;
 
 	return Transform.prototype.pipe.call(self, to);
 };
@@ -162,13 +162,13 @@ Through.prototype.writableObjectMode = true;
  * Indicator of whether should be a sink.
  * Automatically set to false once the stream is connected to anything.
  */
-Through.prototype.isDestination = true;
+Through.prototype.sink = true;
 
 /**
  * Indicator whether it is a source
  * Auto-set to false once anything is connected to the stream.
  */
-Through.prototype.isSource = true;
+Through.prototype.generator = true;
 
 
 /**
@@ -429,8 +429,8 @@ Through.prototype._process = function (buffer, cb) {
 	var result = self.process(buffer, _handleResult);
 
 	//if expected more than one argument - execution was async (like mocha)
-	//also if it not source and not destination with one arg - force awaiting the callback (no sinks by default)
-	if (self.process.length === 2 || (!self.outputsCount && !self.isDestination) ) {
+	//also if it is not a source and not destination with one arg - force awaiting the callback (no sinks by default)
+	if (self.process.length === 2 || (!self.outputsCount && !self.sink) ) {
 		//but in case if result is not undefined - then it is still sync
 		if (result === undefined) {
 			return self;
@@ -512,7 +512,7 @@ Through.prototype._read = function (size) {
 
 	//in-middle case - be a transformer
 	//note that once it was a transformer - it will always remain a transformer
-	if (self.inputsCount || !self.isSource) {
+	if (self.inputsCount || !self.generator) {
 		return Transform.prototype._read.call(self, size);
 	}
 
