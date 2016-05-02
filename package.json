@@ -1,6 +1,6 @@
 {
   "name": "audio-through",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "Stream for audio processing",
   "main": "index.js",
   "files": [
