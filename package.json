@@ -1,6 +1,6 @@
 {
   "name": "audio-through",
-  "version": "1.2.0",
+  "version": "2.0.0",
   "description": "Stream for audio processing",
   "main": "index.js",
   "files": [
@@ -32,10 +32,9 @@
     "audio-buffer-utils": "^2.0.0",
     "audio-generator": "^1.1.0",
     "audio-sink": "^1.0.1",
-    "audio-speaker": "^1.2.2",
+    "audio-speaker": "latest",
     "is-browser": "^2.0.1",
-    "tst": "^1.0.2",
-    "audio-speaker": "latest"
+    "tst": "^1.0.2"
   },
   "dependencies": {
     "array-find": "^1.0.0",
