@@ -1,14 +1,14 @@
-Through stream for audio processing.
+Through stream for audio processing, provides interface between node streams and web-audio-api.
 
-* Compatible with node-streams (pcm streams).
+* Compatible with PCM streams (node streams).
+* Connectable to AudioNodes (Web Audio API).
 * Can be piped right to [speaker](https://npmjs.org/package/speaker).
-* Shares _AudioBuffer_ between connected instances instead of copying _Buffer_, which is 0-overhead.
+* Shares _AudioBuffer_ between connected instances instead of copying _Buffer_, which is 0 performance hit / memory churn.
 * Uses zero-watermarks to avoid output delays.
-* Provides an easy way to control the flow pressure, e. g. to bind processing to the real time, debug chunks, outsource processing to shaders/webworkers/audio-workers, etc.
+* Provides an easy way to control the flow pressure, e. g. to bind processing to real time, debug chunks, outsource processing to shaders/webworkers/audio-workers, etc.
 * Provides debugging facilities.
 * Provides simple audio data metrics.
 * Can be used as a _Readable_, _Transform_ or _Writable_ stream.
-* Provides WAA interface to output stream to web audio destination.
 * WIP: .plan method to schedule events by audio-time.
 
 
@@ -54,7 +54,7 @@ var through = new Through(function (buffer, done?) {
 //Pipe to/from stream
 through.pipe(Speaker());
 
-//Connect to WAA
+//Connect to WAA node
 through.connect(context.destination);
 
 //Event hooks

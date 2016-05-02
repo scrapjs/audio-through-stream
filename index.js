@@ -114,6 +114,12 @@ inherits(Through, Transform);
 
 
 /**
+ * Audio context (optional)
+ */
+Through.prototype.context = null;
+
+
+/**
  * Number of active input connections
  */
 Through.prototype.inputsCount = 0;

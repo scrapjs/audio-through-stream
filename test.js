@@ -70,7 +70,7 @@ test('Destination', function () {
 
 });
 
-test('Speed regulation', function (done) {
+test('Pressure regulation', function (done) {
 	if (!isBrowser) return done();
 
 	var buf, resume;
@@ -109,7 +109,7 @@ test('Speed regulation', function (done) {
 });
 
 
-test.skip('pause/receive', function (done) {
+test.skip('pause/resume', function (done) {
 	//Use-case for this test is obsolete.
 	//Use process function callback for that, redefining these methods is not a good idea
 
@@ -139,9 +139,14 @@ test.skip('pause/receive', function (done) {
 	}));
 });
 
-test.skip('WebAudioNode', function () {
 
+test.skip('Connected to AudioNode', function (done) {
+	//create pipe of sound processing streams with regulated speed
+	Through(util.noise, {context: ctx}).connect(ctx.destination);
+
+	setTimeout(done, 1000);
 });
+
 
 test('Connected to simple node');
 test('Connected from simple node');
