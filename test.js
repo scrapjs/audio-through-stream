@@ -1,6 +1,6 @@
 var Through = require('./');
 var ctx = require('audio-context');
-// var Speaker = require('audio-speaker');
+var Speaker = require('audio-speaker');
 var Sink = require('audio-sink');
 var AudioBuffer = require('audio-buffer');
 var util = require('audio-buffer-utils');
@@ -277,7 +277,7 @@ test.skip('timeDelta, frameCount and other inner vars', function (done) {
 		assert(this.frame >= 0);
 
 		if (this.frame > 4) {
-			done(null);
+			//:( ☞ done(null, null);
 		}
 
 		setTimeout(done, 10);
@@ -320,7 +320,7 @@ test('returning null stops stream', function (done) {
 
 test.skip('convert pcm format', function (done) {
 	//that is the only use-case for the bad API with input/output format.
-	//if user need transformations - let he use pcm-transform or alike.
+	//if user need transformations - he should use pcm-transform or alike.
 	this.timeout(Infinity);
 
 	var n = 0;
@@ -372,4 +372,43 @@ test('through-to-through', function () {
 			setTimeout(cb, 0);
 		}
 	}))
+});
+
+
+test('various frame size', function () {
+	Through(function () {
+		if (this.time > 0.2) {
+			return null;
+		}
+	}, {
+		samplesPerFrame: 512
+	})
+	.pipe(Through(
+		function (chunk) {
+		}
+	), {
+		samplesPerFrame: 512
+	})
+	.pipe(Writable({
+		write: function (chunk, enc, cb) {
+			setTimeout(cb, 0);
+		}
+	}))
+});
+
+test.only('no autogenerator', function (done) {
+	var count = 0;
+
+	Through(function (buffer) {
+		if (this.frame >= 2) this.end();
+	}, {
+		generator: false
+	}).pipe(Sink(function () {
+		count++;
+	}));
+
+	setTimeout(function () {
+		assert.equal(count, 2);
+		done();
+	}, 100);
 });

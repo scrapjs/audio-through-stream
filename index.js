@@ -19,6 +19,7 @@ module.exports = Through;
 
 var streamCount = 0;
 
+
 /**
  * Display logs in console
  */
@@ -436,11 +437,16 @@ Through.prototype._process = function (buffer, cb) {
 		}
 	}
 
-	_handleResult(result);
+	_handleResult(null, result);
 
-	function _handleResult (result) {
+	function _handleResult (err, result) {
 		//ignore double-call of _handleResult (e. g. user mistakenly called 2 times)
 		if (self.state === 'ended') return;
+
+		//handle error
+		if (err) {
+			self.error(err);
+		}
 
 		//if result is null - just finish the processing
 		if (result === null) {
@@ -455,7 +461,7 @@ Through.prototype._process = function (buffer, cb) {
 		//if returned a promise - wait
 		if (isPromise(result)) {
 			result.then(function (result) {
-				_handleResult(result);
+				_handleResult(null, result);
 			}, self.error);
 
 			return;
@@ -475,7 +481,7 @@ Through.prototype._process = function (buffer, cb) {
 		}
 
 		//release data
-		cb(result);
+		cb(err, result);
 
 		//do planned tasks, if any
 		self.doTasks();
@@ -492,8 +498,8 @@ Through.prototype._transform = function (chunk, enc, cb) {
 	//ignore bad states
 	if (self.state === 'ended') return;
 
-	self._process(chunk, function (result) {
-		cb(null, result);
+	self._process(chunk, function (err, result) {
+		cb(err, result);
 	});
 };
 
@@ -514,7 +520,7 @@ Through.prototype._read = function (size) {
 	var buffer = new AudioBuffer(self.format.samplesPerFrame);
 
 	//generate new chunk with silence
-	self._process(buffer, function (result) {
+	self._process(buffer, function (err, result) {
 		self.push(result);
 	});
 };
@@ -535,7 +541,7 @@ Through.prototype._write = function (chunk, enc, cb) {
 	}
 
 	//if no outputs but some inputs - be a sink
-	self._process(chunk, function (result) {
+	self._process(chunk, function (err, result) {
 		self.emit('data', result);
 		cb();
 	});

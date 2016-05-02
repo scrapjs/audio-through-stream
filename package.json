@@ -7,7 +7,8 @@
     "index.js"
   ],
   "scripts": {
-    "test": "node test.js"
+    "test": "node test.js",
+    "test:browser": "budo test.js"
   },
   "repository": {
     "type": "git",
@@ -33,10 +34,8 @@
     "audio-sink": "^1.0.1",
     "audio-speaker": "^1.2.2",
     "is-browser": "^2.0.1",
-    "tst": "^1.0.2"
-  },
-  "optionalDependencies": {
-    "audio-speaker": "^1.2.2"
+    "tst": "^1.0.2",
+    "audio-speaker": "latest"
   },
   "dependencies": {
     "array-find": "^1.0.0",
@@ -46,7 +45,6 @@
     "get-uid": "^1.0.1",
     "inherits": "^2.0.1",
     "is-audio-buffer": "^1.0.1",
-    "is-promise": "^2.1.0",
     "pcm-util": "^2.0.1",
     "performance-now": "^0.2.0",
     "xtend": "^4.0.1"

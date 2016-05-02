@@ -1,13 +1,14 @@
 Through stream for audio processing.
 
-* Compatible with node-streams.
+* Compatible with node-streams (pcm streams).
 * Can be piped right to [speaker](https://npmjs.org/package/speaker).
-* Shares _AudioBuffer_ between streams instead of copying _Buffer_, which is 0-overhead.
+* Shares _AudioBuffer_ between connected instances instead of copying _Buffer_, which is 0-overhead.
 * Uses zero-watermarks to avoid output delays.
 * Provides an easy way to control the flow pressure, e. g. to bind processing to the real time, debug chunks, outsource processing to shaders/webworkers/audio-workers, etc.
 * Provides debugging facilities.
 * Provides simple audio data metrics.
 * Can be used as a _Readable_, _Transform_ or _Writable_ stream.
+* Provides WAA interface to output stream to web audio destination.
 * WIP: .plan method to schedule events by audio-time.
 
 
@@ -20,50 +21,26 @@ var Through = require('audio-through');
 var util = require('audio-buffer-utils');
 var Speaker = require('speaker');
 
-//generate noise
-Through(util.noise)
-
-//decrease volume
-.pipe(Through(function (buffer) {
-  var volume = 0.2;
-
-  util.fill(buffer, function (sample) {
-    return sample * volume;
-  });
-}))
-
-//output
-.pipe(Speaker());
-```
-
-## API
-
-### Create instance
-
-```js
-var through = new Through(
-  //`buffer` is an instance of AudioBuffer, used as input-output.
-  //If other buffer is returned, it will replace the `buffer`.
-  //If `done` argument is expected - the processor will wait for it to be executed,
-  //otherwise - will sink the data.
-  function (buffer, done?) {
-    //number of sample-frames processed
-    this.count;
-
-    //number of frames processed
-    this.frame;
-
-    //if the time of current chunk is more than 3s, end stream
+var through = new Through(function (buffer, done?) {
+    //returning null ends stream
     if (this.time > 3) return null;
 
-    //simple throttling for debug, usually `done` is called right away in sync fashion
-    setTimeout(done, 100);
+    var volume = 0.2;
 
-  },
+    util.fill(buffer, function (sample) {
+      return sample * volume;
+    });
 
-  //Optional buffer formats to use when connected to raw streams, like `node-speaker`.
-  //By default, pcm-util default format is used.
-  options?
+    cb(null, buffer);
+  }, {
+    //automatically act as generator if piped anywhere
+    gnerator: true,
+
+    //pcm options, in case if connected to raw output stream
+    sampleRate: 44100,
+    channels: 2,
+    samplesPerFrame:
+  }
 );
 
 
@@ -77,6 +54,21 @@ through.log(string);
 Through.log = true;
 ```
 
+Through constructor takes `process` function and `options` arguments.
+
+Processor function receives `buffer` and optional `done` callback, and is expected to modify buffer or return a new one.
+
+`buffer` is an instance of _AudioBuffer_, used as input-output. It is expected to be modified in-place to avoid "memory churn" in real-time streams. Still, if a new buffer is returned then it will be used instead of the `buffer`.
+
+Callback argument can be omitted, in that case processor does not hold stream and releases data instantly, like a sink. (The pattern reminisce mocha tests.). If callback argument is present, stream will wait till callback’s invocation.
+Callback receives two arguments — `done(error, data)`, default node callbacks convention.
+
+Processor function has varialbes at command:
+
+* `this.count` — number of processed samples.
+* `this.frame` — number of processed frames (chunks).
+* `this.time` — time of the beginning of current chunk, in seconds.
+* `this.sampleRate`, `this.channels`, `this.samplesPerFrame` — params of audio-stream, see [pcm-util](http://npmjs.org/package/pcm-util) for complete list.
 
 ### Inherit
 
