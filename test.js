@@ -14,7 +14,7 @@ var extend = require('xtend/mutable');
 var Readable = require('stream').Readable;
 var Writable = require('stream').Writable;
 var test = require('tst');
-// var ASink = require('audio-sink')
+var ASink = require('audio-sink');
 
 
 Through.log = true;
@@ -142,8 +142,19 @@ test.skip('pause/resume', function (done) {
 
 
 test('Connected to AudioNode', function (done) {
+	var count = 0;
+
+var WAA = require('web-audio-stream');
 	//create pipe of sound processing streams with regulated speed
-	// Through(util.noise, {context: ctx}).connect(ctx.destination).pipe(RealtimeSink());
+	Through(util.noise, {context: ctx})
+	// .pipe(WAA({ context: ctx })).connect(ctx.destination);
+	.connect(ctx.destination)
+	.pipe(ASink(function (data, cb) {
+		setTimeout(cb, 50);
+
+		count++;
+		if (count > 10) this.end();
+	}));
 
 	setTimeout(done, 1000);
 });

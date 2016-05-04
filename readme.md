@@ -56,6 +56,7 @@ through.pipe(Speaker());
 
 //Connect to WAA node
 through.connect(context.destination);
+through.disconnect();
 
 //Event hooks
 through.on('beforeProcess', function (buffer) {});
@@ -86,6 +87,9 @@ Processor function has varialbes at command:
 * `this.frame` — number of processed frames (chunks).
 * `this.time` — time of the beginning of current chunk, in seconds.
 
+### Connecting to Web Audio
+
+`.connect` method does not perform any kind of pressure control. It just outputs data passed through stream to connected AudioNode(s). If you need web audio destination to control pressure of the stream — use [web-audio-stream](https://github.com/audio-lab/web-audio-stream) package.
 
 ## Related
 
@@ -95,3 +99,4 @@ Processor function has varialbes at command:
 > [audio-buffer](https://github.com/audio-lab/buffer) — audio data holder.<br/>
 > [audio-buffer-utils](https://npmjs.org/package/audio-buffer-utils) — set of utils for audio buffers processing.<br/>
 > [pcm-util](https://npmjs.org/package/pcm-util) — utils for low-level pcm stream tasks.<br/>
+> [web-audio-stream](https://github.com/audio-lab/web-audio-stream) — output stream to web audio.</br>

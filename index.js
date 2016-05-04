@@ -96,7 +96,7 @@ function Through (fn, options) {
 
 
 	//init web audio stream, if context is passed
-	if (self.context) {
+	if (self.context && self.context.sampleRate) {
 		this.waaStream = new WAAStream(self);
 		this.on('afterProcess', writeWAA);
 		this.on('end', function () {
