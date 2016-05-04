@@ -12,6 +12,7 @@ var AudioBuffer = require('audio-buffer');
 var isAudioBuffer = require('is-audio-buffer');
 var now = require('performance-now');
 var chalk = require('chalk');
+var WAAStream = require('web-audio-stream');
 
 
 module.exports = Through;
@@ -90,6 +91,22 @@ function Through (fn, options) {
 	//take over options,
 	extend(self, options);
 
+	//ensure format values are present on self
+	extend(self, self.format);
+
+
+	//init web audio stream, if context is passed
+	if (self.context) {
+		this.waaStream = new WAAStream(self);
+		this.on('afterProcess', writeWAA);
+		this.on('end', function () {
+			this.removeListener('afterProcess', writeWAA);
+		});
+
+		function writeWAA (chunk) {
+			this.waaStream.write(chunk);
+		}
+	}
 
 	//manage input pipes number
 	self.on('pipe', function (source) {
@@ -146,8 +163,8 @@ Object.defineProperties(Through.prototype, {
 Through.prototype.pipe = function (to) {
 	var self = this;
 
-	//detect if we need casting output to buffer (decreases performance)
-	if (self.writableObjectMode && !to._writableState.objectMode) {
+	//detect if we need casting output to buffer (hits performance)
+	if (self.writableObjectMode && (!to._writableState || !to._writableState.objectMode)) {
 		self.writableObjectMode = false;
 	}
 
@@ -551,4 +568,22 @@ Through.prototype._write = function (chunk, enc, cb) {
 		self.emit('data', result);
 		cb();
 	});
+};
+
+
+/** Web-Audio-API interface */
+Through.prototype.connect = function (node) {
+	if (!this.waaStream) return this;
+
+	this.waaStream.connect(node);
+
+	return this;
+};
+
+Through.prototype.disconnect = function (node) {
+	if (!this.waaStream) return this;
+
+	this.waaStream.disconnect(node);
+
+	return this;
 };

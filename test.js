@@ -1,7 +1,7 @@
 var Through = require('./');
 var ctx = require('audio-context');
 var Speaker = require('audio-speaker');
-var Sink = require('audio-sink');
+var Sink = require('stream-sink');
 var AudioBuffer = require('audio-buffer');
 var util = require('audio-buffer-utils');
 var pcm = require('pcm-util');
@@ -14,6 +14,7 @@ var extend = require('xtend/mutable');
 var Readable = require('stream').Readable;
 var Writable = require('stream').Writable;
 var test = require('tst');
+// var ASink = require('audio-sink')
 
 
 Through.log = true;
@@ -140,9 +141,9 @@ test.skip('pause/resume', function (done) {
 });
 
 
-test.skip('Connected to AudioNode', function (done) {
+test('Connected to AudioNode', function (done) {
 	//create pipe of sound processing streams with regulated speed
-	Through(util.noise, {context: ctx}).connect(ctx.destination);
+	// Through(util.noise, {context: ctx}).connect(ctx.destination).pipe(RealtimeSink());
 
 	setTimeout(done, 1000);
 });
@@ -318,9 +319,10 @@ test('returning null stops stream', function (done) {
 		assert.equal(count, 2);
 		done();
 	})
-	.pipe(Sink(function () {
+	.on('data', function () {
 		count++;
-	}));
+	})
+	.pipe(Sink());
 });
 
 test.skip('convert pcm format', function (done) {
@@ -408,9 +410,7 @@ test('no autogenerator', function (done) {
 		if (this.frame >= 2) this.end();
 	}, {
 		generator: false
-	}).pipe(Sink(function () {
-		count++;
-	}));
+	}).on('data', function () {count++}).pipe(Sink());
 
 	setTimeout(function () {
 		assert.equal(count, 0);
