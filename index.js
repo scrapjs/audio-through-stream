@@ -11,8 +11,6 @@ var context = require('audio-context');
 var AudioBuffer = require('audio-buffer');
 var isAudioBuffer = require('is-audio-buffer');
 var now = require('performance-now');
-var chalk = require('chalk');
-var WAAStream = require('web-audio-stream');
 
 
 module.exports = Through;
@@ -94,20 +92,6 @@ function Through (fn, options) {
 	//ensure format values are present on self
 	extend(self, self.format);
 
-
-	//init web audio stream, if context is passed
-	if (self.context && self.context.sampleRate) {
-		this.waaStream = new WAAStream(self);
-		this.on('afterProcess', writeWAA);
-		this.on('end', function () {
-			this.removeListener('afterProcess', writeWAA);
-		});
-
-		function writeWAA (chunk) {
-			this.waaStream.write(chunk);
-		}
-	}
-
 	//manage input pipes number
 	self.on('pipe', function (source) {
 		self.inputsCount++;
@@ -128,12 +112,6 @@ function Through (fn, options) {
  * Set duplex behaviour
  */
 inherits(Through, Transform);
-
-
-/**
- * Audio context (optional)
- */
-Through.prototype.context = null;
 
 
 /**
@@ -394,7 +372,7 @@ Through.prototype.error = function (error) {
 	//ensure error format
 	error = error instanceof Error ? error : Error(error);
 
-	console.error(pfx(self), chalk.red(error.message));
+	console.error(pfx(self), error.message);
 
 	//emit error event
 	self.emit('error', error);
@@ -421,7 +399,7 @@ Through.prototype.log = function () {
  * Return prefix for logging
  */
 function pfx (self) {
-	return chalk.gray('#' + self._id + ' ' + (now() - self._creationTime).toFixed(0) + 'ms');
+	return '#' + self._id + ' ' + (now() - self._creationTime).toFixed(0) + 'ms';
 };
 
 
@@ -568,22 +546,4 @@ Through.prototype._write = function (chunk, enc, cb) {
 		self.emit('data', result);
 		cb();
 	});
-};
-
-
-/** Web-Audio-API interface */
-Through.prototype.connect = function (node) {
-	if (!this.waaStream) return this;
-
-	this.waaStream.connect(node);
-
-	return this;
-};
-
-Through.prototype.disconnect = function (node) {
-	if (!this.waaStream) return this;
-
-	this.waaStream.disconnect(node);
-
-	return this;
 };

@@ -1,7 +1,6 @@
-Through stream for audio processing, provides interface between node streams and web-audio-api.
+Through stream for audio processing.
 
 * Compatible with PCM streams (node streams).
-* Connectable to AudioNodes (Web Audio API).
 * Can be piped right to [speaker](https://npmjs.org/package/speaker).
 * Shares _AudioBuffer_ between connected instances instead of copying _Buffer_, which is 0 performance hit / memory churn.
 * Uses zero-watermarks to avoid output delays.
@@ -20,76 +19,91 @@ Through stream for audio processing, provides interface between node streams and
 var Through = require('audio-through');
 var util = require('audio-buffer-utils');
 var Speaker = require('speaker');
-var context = require('audio-context');
 
-
-var through = new Through(function (buffer, done?) {
+var through = new Through(function (buffer) {
     if (this.time > 3) return this.end();
 
     //decrease volume
     var volume = 0.2;
 
     util.fill(buffer, function (sample) {
-      return sample * volume;
+        return sample * volume;
     });
-
-    cb(null, buffer);
-  }, {
-    //act as a generator readable stream if connected outwards but not connected inwards
-    gnerator: true,
-
-    //act as a sink writable stream if not connected outwards but connected inwards
-    sink: true,
-
-    //WAA context, optional — in case if supposed to connect to AudioNodes
-    context: context,
-
-    //pcm options, in case if connected to raw output stream
-    sampleRate: 44100,
-    channels: 2,
-    samplesPerFrame:
-  }
-);
+});
 
 //Pipe to/from stream
 through.pipe(Speaker());
-
-//Connect to WAA node
-through.connect(context.destination);
-through.disconnect();
-
-//Event hooks
-through.on('beforeProcess', function (buffer) {});
-through.on('afterProcess', function (result) {});
-
-//End stream
-through.end();
-
-//Throw error, not breaking the pipe
-through.error(error|string);
-
-//Log with additional data
-through.log(string);
 ```
+
+## API
+
+### `new Through(process, options?)`
 
 Through constructor takes `process` function and `options` arguments.
 
 Processor function receives `buffer` and optional `done` callback, and is expected to modify buffer or return a new one.
 
-`buffer` is an instance of _AudioBuffer_, used as input-output. It is expected to be modified in-place to avoid "memory churn" in real-time streams. Still, if a new buffer is returned then it will be used instead of the `buffer`.
+```js
+var through = new Through(function (buffer, done) {
+    //...process buffer
+
+    done(null, buffer);
+});
+```
+
+Argument `buffer` is an instance of _AudioBuffer_, used as input-output. It is expected to be modified in-place to avoid "memory churn". Still, if a new buffer is returned then it will be used instead of the `buffer`.
 
 Callback argument can be omitted, in that case processor does not hold stream and releases data instantly, like a sink. (The pattern reminisce mocha tests.). If callback argument is present, stream will wait till callback’s invocation.
 Callback receives two arguments — `done(error, data)`, default node callbacks convention.
 
-Processor function has varialbes at command:
+### `options`
 
-* `this.count` — number of processed samples.
-* `this.frame` — number of processed frames (chunks).
-* `this.time` — time of the beginning of current chunk, in seconds.
+```js
+{
+    //act as a generator readable stream if connected outwards but not connected inwards
+    generator: true,
+
+    //act as a sink writable stream if not connected outwards but connected inwards
+    sink: true,
+
+    //pcm options, in case if connected to raw output stream
+    sampleRate: 44100,
+    channels: 2,
+    samplesPerFrame: 1024
+}
+```
+
+### `through.count`
+
+Number of processed samples.
+
+### `through.frame`
+
+Number of processed frames (chunks).
+
+### `through.time`
+
+Time of the beginning of the next chunk, in seconds.
+
+### `through.on(evt, function (buffer) {})`
+
+Bind hook to processing event: `beforeProcess` or `afterProcess`. You can perform additional buffer modifications, if required.
+
+### `through.end()`
+
+End stream, can be called from within processing function or outside.
+
+### `through.error(error|string)`
+
+Throw error, not breaking the pipe.
+
+### `through.log(string);`
+
+Logging per-instance with timestamps.
 
 ### Connecting to Web Audio
 
-`.connect` method does not perform any kind of pressure control. It just outputs data passed through stream to connected AudioNode(s). If you need web audio destination to control pressure of the stream — use [web-audio-stream](https://github.com/audio-lab/web-audio-stream) package.
+If you need to output stream to web audio — use whether [web-audio-stream](https://github.com/audio-lab/web-audio-stream) or [audio-speaker](https://github.com/audio-lab/audio-speaker).
 
 ## Related
 
