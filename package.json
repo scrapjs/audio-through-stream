@@ -3,9 +3,6 @@
   "version": "2.1.2",
   "description": "Stream for audio processing",
   "main": "index.js",
-  "files": [
-    "./index.js"
-  ],
   "scripts": {
     "test": "node test.js",
     "test:browser": "budo test.js"
