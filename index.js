@@ -191,7 +191,7 @@ Through.prototype.generator = undefined;
 Through.prototype.state = undefined;
 
 
-
+Through.prototype.context = context;
 
 /**
  * TODO: Plan callback each N seconds
