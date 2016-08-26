@@ -97,7 +97,7 @@ function Through (fn, options) {
 		self.inputsCount++;
 
 		//loose source virginity
-		if (self.generator) self.generator = false;
+		if (self.generator == null) self.generator = false;
 
 	}).on('unpipe', function (source) {
 		self.inputsCount--;
@@ -147,7 +147,7 @@ Through.prototype.pipe = function (to) {
 	}
 
 	//lose sink virginity
-	if (self.sink) self.sink = false;
+	if (self.sink == null) self.sink = false;
 
 	return Transform.prototype.pipe.call(self, to);
 };
@@ -163,13 +163,13 @@ Through.prototype.writableObjectMode = true;
  * Indicator of whether should be a sink.
  * Automatically set to false once the stream is connected to anything.
  */
-Through.prototype.sink = true;
+Through.prototype.sink = undefined;
 
 /**
  * Indicator whether it is a source
  * Auto-set to false once anything is connected to the stream.
  */
-Through.prototype.generator = true;
+Through.prototype.generator = undefined;
 
 
 /**
@@ -431,7 +431,7 @@ Through.prototype._process = function (buffer, cb) {
 
 	//if expected more than one argument - execution was async (like mocha)
 	//also if it is not a source and not destination with one arg - force awaiting the callback (no sinks by default)
-	if (self.process.length === 2 || (!self.outputsCount && !self.sink) ) {
+	if (self.process.length === 2 || (!self.outputsCount && self.sink == false) ) {
 		//but in case if result is not undefined - then it is still sync
 		if (result === undefined) {
 			return self;
@@ -511,9 +511,12 @@ Through.prototype._transform = function (chunk, enc, cb) {
 Through.prototype._read = function (size) {
 	var self = this;
 
+	//once been read - no more sink
+	if (self.sink == null) self.sink = false;
+
 	//in-middle case - be a transformer
 	//note that once it was a transformer - it will always remain a transformer
-	if (self.inputsCount || !self.generator) {
+	if (self.inputsCount || self.generator == false) {
 		return Transform.prototype._read.call(self, size);
 	}
 
@@ -535,6 +538,9 @@ Through.prototype._write = function (chunk, enc, cb) {
 
 	//ignore bad states (like, ended in between)
 	if (self.state === 'ended') return;
+
+	//once been written - no more generator
+	if (self.generator == null) self.generator = false;
 
 	//be a transformer, if in-between
 	if (self.outputsCount) {
