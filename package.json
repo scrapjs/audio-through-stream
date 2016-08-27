@@ -9,7 +9,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/audio-lab/audio-through"
+    "url": "https://github.com/audiojs/audio-through"
   },
   "keywords": [
     "dsp",
@@ -22,9 +22,9 @@
   "author": "Deema Yvanow <dfcreative@gmail.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/audio-lab/audio-through/issues"
+    "url": "https://github.com/audiojs/audio-through/issues"
   },
-  "homepage": "https://github.com/audio-lab/audio-through",
+  "homepage": "https://github.com/audiojs/audio-through",
   "devDependencies": {
     "audio-buffer-utils": "^3.1.0",
     "audio-generator": "^2.0.3",

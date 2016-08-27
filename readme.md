@@ -103,14 +103,14 @@ Logging per-instance with timestamps.
 
 ### Connecting to Web Audio
 
-If you need to output stream to web audio — use whether [web-audio-stream](https://github.com/audio-lab/web-audio-stream) or [audio-speaker](https://github.com/audio-lab/audio-speaker).
+If you need to output stream to web audio — use whether [web-audio-stream](https://github.com/audiojs/web-audio-stream) or [audio-speaker](https://github.com/audiojs/audio-speaker).
 
 ## Related
 
-> [audio-generator](https://github.com/audio-lab/audio-generator) — audio signal generator stream.<br/>
-> [audio-speaker](https://github.com/audio-lab/audio-speaker) — output audio stream in browser/node.<br/>
-> [audio-shader](https://github.com/audio-lab/audio-shader) — shader-based audio processing stream.<br/>
-> [audio-buffer](https://github.com/audio-lab/buffer) — audio data holder.<br/>
+> [audio-generator](https://github.com/audiojs/audio-generator) — audio signal generator stream.<br/>
+> [audio-speaker](https://github.com/audiojs/audio-speaker) — output audio stream in browser/node.<br/>
+> [audio-shader](https://github.com/audiojs/audio-shader) — shader-based audio processing stream.<br/>
+> [audio-buffer](https://github.com/audiojs/audio-buffer) — audio data holder.<br/>
 > [audio-buffer-utils](https://npmjs.org/package/audio-buffer-utils) — set of utils for audio buffers processing.<br/>
 > [pcm-util](https://npmjs.org/package/pcm-util) — utils for low-level pcm stream tasks.<br/>
-> [web-audio-stream](https://github.com/audio-lab/web-audio-stream) — output stream to web audio.</br>
+> [web-audio-stream](https://github.com/audiojs/web-audio-stream) — output stream to web audio.</br>
