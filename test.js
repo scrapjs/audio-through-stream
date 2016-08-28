@@ -188,7 +188,7 @@ test('throttle source', function (done) {
 		setTimeout(done, 50);
 	})
 	.on('end', function () {
-		assert.equal(count, 4);
+		assert.equal(count, 3);
 		done();
 	})
 	.pipe(Through(function (input) {

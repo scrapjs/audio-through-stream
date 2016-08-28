@@ -193,121 +193,6 @@ Through.prototype.state = undefined;
 
 Through.prototype.context = context;
 
-/**
- * TODO: Plan callback each N seconds
- */
-// Through.prototype.schedule = function (interval, offset, cb) {
-// 	var self = this;
-
-// 	if (typeof offset === 'Function') {
-// 		cb = offset;
-// 		offset = 0;
-// 	}
-
-// 	// var idx = self._schedule.
-// };
-
-
-
-/**
- * TODO: Cancel planned time callback
- */
-// Through.prototype.cancel = function (time, cb) {
-// };
-
-
-
-/**
- * TODO: Fade out the node
- */
-// Through.prototype.mute = function () {
-// };
-
-
-/**
- * TODO: Fade out all other nodes
- */
-// Through.prototype.solo = function () {
-// };
-
-
-/**
- * TODO: Resume handling
- */
-/*
-Through.prototype.resume = function () {
-	var self = this;
-
-	//NOTE: this method is used innerly as well, so we can’t really redefine it’s behaviour
-	if (self.state === 'ended') return self;
-
-	self.state = 'normal';
-
-	//FIXME: a shitstory of ensuring the resume event is triggered
-	var isTriggered = false;
-	self.once('resume', function () {
-		isTriggered = true;
-	});
-
-	//NOTE: ↓ emits `resume`, in case if actually resumed
-	Transform.prototype.resume.call(self);
-
-	//force emitting the event, if the readable above ignored it
-	if (!isTriggered) {
-		self.emit('resume');
-	}
-
-	return self;
-};
-*/
-
-
-/**
- * TODO: Pause handling.
- */
-/*
-Through.prototype.pause = function (time) {
-	var self = this;
-	// self.log('pause');
-
-	if (self.state === 'ended') return self;
-
-	self.state = 'paused';
-
-	//FIXME: a shitstory of ensuring the resume event is triggered
-	var isTriggered = false;
-	self.once('pause', function () {
-		isTriggered = true;
-	});
-
-	//call pause if stream is a source only.
-	//FIXME: because if user pauses manually controlling stream - it causes generating twice
-	//not sure why
-	if (!self.inputsCount) {
-		Transform.prototype.pause.call(self);
-	}
-
-	if (!isTriggered) {
-		self.emit('pause');
-	}
-
-	return self;
-};
-*/
-
-
-/**
- * TODO: Indicate whether it is paused
- * (just overrides the Through’s method)
- */
-/*
-Through.prototype.isPaused = function (time) {
-	var self = this;
-	return self.state === 'paused';
-};
-*/
-
-
 
 /**
  * Plan stream closing.
@@ -315,6 +200,8 @@ Through.prototype.isPaused = function (time) {
  */
 Through.prototype.end = function () {
 	var self = this;
+
+	self._isEndCalled = true;
 
 	//plan invocation of end
 	self._tasks.push(function () {
@@ -442,7 +329,7 @@ Through.prototype._process = function (buffer, cb) {
 
 	function _handleResult (err, result) {
 		//ignore double-call of _handleResult (e. g. user mistakenly called 2 times)
-		if (self.state === 'ended') return;
+		if (self.state === 'ended' || self._isEndCalled) return self.doTasks();
 
 		//handle error
 		if (err) {
