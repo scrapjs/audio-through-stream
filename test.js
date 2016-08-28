@@ -15,7 +15,7 @@ var Writable = require('stream').Writable;
 var test = require('tst');
 var ASink = require('audio-sink');
 var Speaker = require('audio-speaker');
-var WAAStream = isBrowser && require('web-audio-stream');
+var WAAStream = require('web-audio-stream');
 
 
 Through.log = true;
@@ -144,6 +144,8 @@ test.skip('pause/resume', function (done) {
 
 
 test('Connected to AudioNode', function (done) {
+	if (!isBrowser) return done();
+
 	var count = 0;
 
 	//create pipe of sound processing streams with regulated speed
