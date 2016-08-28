@@ -1,3 +1,5 @@
+# audio-through [![Build Status](https://travis-ci.org/audiojs/audio-through.svg?branch=master)](https://travis-ci.org/audiojs/audio-through) [![stable](http://badges.github.io/stability-badges/dist/stable.svg)](http://github.com/badges/stability-badges)
+
 Through stream for audio processing.
 
 * Compatible with PCM streams (node streams).
