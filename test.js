@@ -1,6 +1,5 @@
 var Through = require('./');
 var ctx = require('audio-context');
-var Speaker = require('audio-speaker');
 var Sink = require('stream-sink');
 var AudioBuffer = require('audio-buffer');
 var util = require('audio-buffer-utils');
@@ -15,7 +14,8 @@ var Readable = require('stream').Readable;
 var Writable = require('stream').Writable;
 var test = require('tst');
 var ASink = require('audio-sink');
-var WAAStream = require('web-audio-stream');
+var Speaker = require('audio-speaker');
+var WAAStream = isBrowser && require('web-audio-stream');
 
 
 Through.log = true;
@@ -59,8 +59,9 @@ test('Source', function (done) {
 	})
 	.on('end', done)
 	.pipe(Sink(function (data) {
-		// console.log('fin', data.length)
+		console.log('fin', data.length)
 	}))
+	// .pipe(WAAStream(context.destination))
 	// .pipe(Speaker())
 });
 

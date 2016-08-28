@@ -32,8 +32,8 @@
     "audio-speaker": "latest",
     "is-browser": "^2.0.1",
     "stream-sink": "^1.2.0",
-    "web-audio-stream": "^1.0.1",
-    "tst": "^1.0.2"
+    "tst": "^1.0.2",
+    "web-audio-stream": "^2.0.3"
   },
   "dependencies": {
     "array-find": "^1.0.0",
