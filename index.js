@@ -253,17 +253,17 @@ Through.prototype.doTasks = function () {
  * Throw inobstructive error. Does not stop stream.
  */
 Through.prototype.error = function (error) {
-	if (!Through.log) return self;
-
 	var self = this;
 
 	//ensure error format
 	error = error instanceof Error ? error : Error(error);
 
-	console.error(pfx(self), error.message);
+	if (Through.log) console.error(pfx(self), error.message);
 
 	//emit error event
 	self.emit('error', error);
+
+	this.end();
 
 	return self;
 };
@@ -325,7 +325,6 @@ Through.prototype._process = function (buffer, cb) {
 			return self;
 		}
 	}
-
 	//handle sync error
 	if (result instanceof Error) {
 		_handleResult(result);
