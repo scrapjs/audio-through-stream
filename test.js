@@ -431,3 +431,13 @@ test('no autogenerator', function (done) {
 		done();
 	}, 100);
 });
+
+test('sync error', done => {
+	Through(b => {
+		return Error(123)
+	}).on('error', function (e) {
+		assert(e.message == 123);
+		this.end();
+		done();
+	}).pipe(Through());
+});

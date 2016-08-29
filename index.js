@@ -1,6 +1,7 @@
 /**
  * @module audio-through
  */
+'use strict';
 
 var Transform = require('stream').Transform;
 var pcm = require('pcm-util');
@@ -325,7 +326,14 @@ Through.prototype._process = function (buffer, cb) {
 		}
 	}
 
-	_handleResult(null, result);
+	//handle sync error
+	if (result instanceof Error) {
+		_handleResult(result);
+	}
+
+	else {
+		_handleResult(null, result);
+	}
 
 	function _handleResult (err, result) {
 		//ignore double-call of _handleResult (e. g. user mistakenly called 2 times)
