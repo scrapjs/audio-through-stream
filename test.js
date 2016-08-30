@@ -440,4 +440,12 @@ test('sync error', done => {
 		this.end();
 		done();
 	}).pipe(Through());
+
+	Through(b => {
+		throw Error(123)
+	}).on('error', function (e) {
+		assert(e.message == 123);
+		this.end();
+		done();
+	}).pipe(Through());
 });

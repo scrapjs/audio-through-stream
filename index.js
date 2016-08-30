@@ -315,7 +315,11 @@ Through.prototype._process = function (buffer, cb) {
 	//send buffer to processor - do sync or async altogether, define further steps after
 	//because sync/async can vary
 	//NOTE: why not promise? promise causes processor tick between executor and `then`.
-	var result = self.process(buffer, _handleResult);
+	try {
+		var result = self.process(buffer, _handleResult);
+	} catch (e) {
+		_handleResult(e);
+	}
 
 	//if expected more than one argument - execution was async (like mocha)
 	//also if it is not a source and not destination with one arg - force awaiting the callback (no sinks by default)
