@@ -210,6 +210,8 @@ Through.prototype.end = function () {
 
 		this.state = 'ended';
 
+		this.process.end && this.process.end();
+
 		var triggered = false;
 		this.once('end', function () {
 			triggered = true;
@@ -223,6 +225,7 @@ Through.prototype.end = function () {
 				that.emit('end');
 			}
 		});
+
 
 		this.log('end');
 
