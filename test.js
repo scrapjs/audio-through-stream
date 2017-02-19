@@ -46,7 +46,7 @@ test('Source', function (done) {
 	Through(function (input) {
 		var len = 1024;
 
-		util.fill(input, function (value, channel, idx) {
+		util.fill(input, function (value, idx, channel) {
 			if (channel === 1) {
 				return 1 - idx/len * 2;
 			}
