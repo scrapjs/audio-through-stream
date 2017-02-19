@@ -41,7 +41,7 @@
     "audio-context": "^0.1.0",
     "get-uid": "^1.0.1",
     "inherits": "^2.0.1",
-    "is-audio-buffer": "^1.0.1",
+    "is-audio-buffer": "^1.0.2",
     "is-promise": "^2.1.0",
     "pcm-util": "^2.0.1",
     "performance-now": "^0.2.0",
