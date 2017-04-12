@@ -37,7 +37,7 @@
   },
   "dependencies": {
     "array-find": "^1.0.0",
-    "audio-buffer": "^3.0.0",
+    "audio-buffer": "^3.1.0",
     "audio-context": "^0.1.0",
     "get-uid": "^1.0.1",
     "inherits": "^2.0.1",
