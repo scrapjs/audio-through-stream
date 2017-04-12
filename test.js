@@ -14,8 +14,8 @@ var Readable = require('stream').Readable;
 var Writable = require('stream').Writable;
 var t = require('tape');
 var ASink = require('audio-sink');
-var Speaker = require('audio-speaker');
-var WAAStream = require('web-audio-stream');
+var Speaker = require('audio-speaker/stream');
+var WAAStream = require('web-audio-stream/stream');
 
 
 Through.log = true;
@@ -45,24 +45,27 @@ t('Source', function (t) {
 	//weird-saw wave generator
 	Through(function (input) {
 		var len = 1024;
+		var count = this.count
 
 		util.fill(input, function (value, idx, channel) {
-			if (channel === 1) {
-				return 1 - idx/len * 2;
-			}
-			return idx/len * 2 - 1;
+			// if (channel === 1) {
+			// 	return 1 - idx/len * 2;
+			// }
+			// return idx/len * 2 - 1;
+			return Math.sin(Math.PI * 2 * (440 + (channel > 0 ? 1 : -1)) * (count + idx) / 44100)
 		});
 
-		if (this.time > 0.1) {
+		if (this.time > .5) {
 			this.end();
 		}
+		return input
 	})
 	.on('end', t.end)
 	.pipe(Sink(function (data) {
 		console.log('fin', data.length)
 	}))
-	// .pipe(WAAStream(context.destination))
-	// .pipe(Speaker())
+	// .pipe(WAAStream(ctx.destination))
+	// .pipe(Speaker({context: ctx}))
 });
 
 t.skip('Processor', function () {
@@ -149,6 +152,7 @@ t('Connected to AudioNode', function (t) {
 	var count = 0;
 
 	//create pipe of sound processing streams with regulated speed
+	//you should hear noise burst
 	Through(util.noise, {context: ctx})
 	.pipe(ASink(function (data, cb) {
 		setTimeout(cb, 50);
@@ -156,8 +160,7 @@ t('Connected to AudioNode', function (t) {
 		count++;
 		if (count > 10) this.end();
 	}))
-	.pipe(WAAStream({ context: ctx }))
-	.connect(ctx.destination);
+	.pipe(WAAStream(ctx.destination))
 
 	setTimeout(t.end, 1000);
 });
