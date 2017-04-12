@@ -9,10 +9,10 @@ var isBrowser = require('is-browser');
 var assert = require('assert');
 var Stream = require('stream');
 var inherits = require('inherits');
-var extend = require('xtend/mutable');
+var extend = require('object-assign');
 var Readable = require('stream').Readable;
 var Writable = require('stream').Writable;
-var test = require('tst');
+var t = require('tape');
 var ASink = require('audio-sink');
 var Speaker = require('audio-speaker');
 var WAAStream = require('web-audio-stream');
@@ -22,13 +22,13 @@ Through.log = true;
 
 
 
-test('PassThrough', function (done) {
+t('PassThrough', function (t) {
 	Through(function (input) {
 		if (this.time > 0.1) {
 			this.end();
 		}
 	})
-	.on('end', done)
+	.on('end', t.end)
 	.pipe(Through())
 	.pipe(Through(function () {
 		// this.end();
@@ -41,7 +41,7 @@ test('PassThrough', function (done) {
 	}));
 });
 
-test('Source', function (done) {
+t('Source', function (t) {
 	//weird-saw wave generator
 	Through(function (input) {
 		var len = 1024;
@@ -57,7 +57,7 @@ test('Source', function (done) {
 			this.end();
 		}
 	})
-	.on('end', done)
+	.on('end', t.end)
 	.pipe(Sink(function (data) {
 		console.log('fin', data.length)
 	}))
@@ -65,16 +65,16 @@ test('Source', function (done) {
 	// .pipe(Speaker())
 });
 
-test('Processor', function () {
+t('Processor', function () {
 
 });
 
-test('Destination', function () {
+t('Destination', function () {
 
 });
 
-test('Pressure regulation', function (done) {
-	if (!isBrowser) return done();
+t('Pressure regulation', function (t) {
+	if (!isBrowser) return t.end();
 
 	var buf, resume;
 
@@ -91,7 +91,7 @@ test('Pressure regulation', function (done) {
 		resume && resume();
 
 		if (e.playbackTime > 0.15) {
-			done();
+			t.end();
 			scriptNode.disconnect();
 		}
 	};
@@ -112,11 +112,11 @@ test('Pressure regulation', function (done) {
 });
 
 
-test.skip('pause/resume', function (done) {
+t.skip('pause/resume', function (t) {
 	//Use-case for this test is obsolete.
 	//Use process function callback for that, redefining these methods is not a good idea
 
-	this.timeout(false);
+	// this.timeout(false);
 
 	//create pipe of sound processing streams with regulated speed
 	var stream = Through(function (input) {
@@ -143,8 +143,8 @@ test.skip('pause/resume', function (done) {
 });
 
 
-test('Connected to AudioNode', function (done) {
-	if (!isBrowser) return done();
+t('Connected to AudioNode', function (t) {
+	if (!isBrowser) return t.end();
 
 	var count = 0;
 
@@ -159,23 +159,23 @@ test('Connected to AudioNode', function (done) {
 	.pipe(WAAStream({ context: ctx }))
 	.connect(ctx.destination);
 
-	setTimeout(done, 1000);
+	setTimeout(t.end, 1000);
 });
 
 
-test('Connected to simple node');
-test('Connected from simple node');
+t('Connected to simple node');
+t('Connected from simple node');
 
-test.skip('Errors in processing', function (done) {
-
-});
-
-test.skip('error', function (done) {
+t.skip('Errors in processing', function (t) {
 
 });
 
-test('throttle source', function (done) {
-	this.timeout(false);
+t.skip('error', function (t) {
+
+});
+
+t('throttle source', function (t) {
+	// this.timeout(false);
 
 	var count = 0;
 
@@ -189,7 +189,7 @@ test('throttle source', function (done) {
 	})
 	.on('end', function () {
 		assert.equal(count, 3);
-		done();
+		t.end();
 	})
 	.pipe(Through(function (input) {
 		// console.log('Received', input.time);
@@ -198,8 +198,8 @@ test('throttle source', function (done) {
 
 });
 
-test('pipe to non-object stream', function (done) {
-	this.timeout(false);
+t.only('pipe to non-object stream', function (t) {
+	// this.timeout(false);
 
 	var count = 0;
 
@@ -220,12 +220,12 @@ test('pipe to non-object stream', function (done) {
 	}))
 	.on('end', function () {
 		assert.equal(count, 4);
-		done();
+		t.end();
 	});
 })
 
-test('throttle destination', function (done) {
-	this.timeout(false);
+t('throttle destination', function (t) {
+	// this.timeout(false);
 
 	var count = 0;
 
@@ -244,52 +244,52 @@ test('throttle destination', function (done) {
 			this.end();
 		}
 
-		done();
-		// setTimeout(done, 50);
+		t.end();
+		// setTimeout(t.end, 50);
 	}))
 	.on('end', function () {
 		assert.equal(count, 4);
-		done();
+		t.end();
 	});
 });
 
-test('beforeProcess, afterProcess hooks', function () {
+t('beforeProcess, afterProcess hooks', function () {
 
 });
 
-test('single stream does not start generating, only when piped');
+t('single stream does not start generating, only when piped');
 
 
-test.skip('mute', function () {
-
-});
-
-test.skip('solo', function () {
+t.skip('mute', function () {
 
 });
 
-test.skip('schedule', function () {
+t.skip('solo', function () {
 
 });
 
-test.skip('Multiple inputs', function () {
+t.skip('schedule', function () {
 
 });
 
-test.skip('Multiple outputs', function () {
+t.skip('Multiple inputs', function () {
 
 });
 
-test.skip('pause/resume', function () {
+t.skip('Multiple outputs', function () {
 
 });
 
-test.skip('end', function () {
+t.skip('pause/resume', function () {
 
 });
 
-test.skip('timeDelta, frameCount and other inner vars', function (done) {
-	this.timeout(10e5);
+t.skip('end', function () {
+
+});
+
+t.skip('timeDelta, frameCount and other inner vars', function (t) {
+	// this.timeout(10e5);
 
 	Through(function(chunk, done) {
 		assert(this.timeDelta >= 0);
@@ -297,41 +297,41 @@ test.skip('timeDelta, frameCount and other inner vars', function (done) {
 		assert(this.frame >= 0);
 
 		if (this.frame > 4) {
-			//:( ☞ done(null, null);
+			//:( ☞ t.end(null, null);
 		}
 
-		setTimeout(done, 10);
+		setTimeout(t.end, 10);
 	})
 	.on('end', function () {
-		done();
+		t.end();
 	})
 	.pipe(Through());
 });
 
-test('sync/async turns', function (done) {
-	this.timeout(10e5);
+t('sync/async turns', function (t) {
+	// this.timeout(10e5);
 
 	Through(function(chunk, done) {
 		if (this.time > 0.1) {
 			return null
 		}
 
-		setTimeout(done, 10);
+		setTimeout(t.end, 10);
 	})
 	.on('end', function () {
-		done();
+		t.end();
 	})
 	.pipe(Through());
 });
 
-test('returning null stops stream', function (done) {
+t('returning null stops stream', function (t) {
 	var count = 0;
 	Through(function () {
 		if ( count >= 2 ) return null;
 	})
 	.on('end', function () {
 		assert.equal(count, 2);
-		done();
+		t.end();
 	})
 	.on('data', function () {
 		count++;
@@ -339,10 +339,10 @@ test('returning null stops stream', function (done) {
 	.pipe(Sink());
 });
 
-test.skip('convert pcm format', function (done) {
+t.skip('convert pcm format', function (t) {
 	//that is the only use-case for the bad API with input/output format.
 	//if user need transformations - he should use pcm-transform or alike.
-	this.timeout(Infinity);
+	// this.timeout(Infinity);
 
 	var n = 0;
 
@@ -360,7 +360,7 @@ test.skip('convert pcm format', function (done) {
 			this.push(buf);
 		}
 	})
-	.on('end', done)
+	.on('end', t.end)
 	.pipe(Through({
 		channels: 1,
 		float: true
@@ -378,7 +378,7 @@ test.skip('convert pcm format', function (done) {
 });
 
 
-test('through-to-through', function () {
+t('through-to-through', function () {
 	Through(function () {
 		if (this.time > 0.1) {
 			return null;
@@ -396,7 +396,7 @@ test('through-to-through', function () {
 });
 
 
-test('various frame size', function () {
+t('various frame size', function () {
 	Through(function () {
 		if (this.time > 0.2) {
 			return null;
@@ -417,7 +417,7 @@ test('various frame size', function () {
 	}))
 });
 
-test('no autogenerator', function (done) {
+t('no autogenerator', function (t) {
 	var count = 0;
 
 	Through(function (buffer) {
@@ -428,17 +428,17 @@ test('no autogenerator', function (done) {
 
 	setTimeout(function () {
 		assert.equal(count, 0);
-		done();
+		t.end();
 	}, 100);
 });
 
-test('sync error', done => {
+t('sync error', t => {
 	Through(b => {
 		return Error(123)
 	}).on('error', function (e) {
 		assert(e.message == 123);
 		this.end();
-		done();
+		t.end();
 	}).pipe(Through());
 
 	Through(b => {
@@ -446,6 +446,6 @@ test('sync error', done => {
 	}).on('error', function (e) {
 		assert(e.message == 123);
 		this.end();
-		done();
+		t.end();
 	}).pipe(Through());
 });
