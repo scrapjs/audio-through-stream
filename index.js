@@ -310,7 +310,11 @@ Through.prototype._process = function (buffer, cb) {
 	var self = this;
 
 	//ensure buffer is AudioBuffer
-	if (!isAudioBuffer(buffer)) buffer = pcm.toAudioBuffer(buffer, self.format);
+	if (!isAudioBuffer(buffer)) {
+
+		buffer = pcm.toAudioBuffer(buffer, self.format);
+
+	}
 
 	//provide hook
 	self.emit('beforeProcess', buffer);
@@ -379,7 +383,9 @@ Through.prototype._process = function (buffer, cb) {
 
 		//convert to buffer, if at least one output is natural node-stream
 		if (!self.writableObjectMode && isAudioBuffer(result)) {
+
 			result = pcm.toBuffer(result, self.format);
+
 		}
 
 		//release data

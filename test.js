@@ -65,11 +65,11 @@ t('Source', function (t) {
 	// .pipe(Speaker())
 });
 
-t('Processor', function () {
+t.skip('Processor', function () {
 
 });
 
-t('Destination', function () {
+t.skip('Destination', function () {
 
 });
 
@@ -81,7 +81,7 @@ t('Pressure regulation', function (t) {
 	//create sound renderer
 	var sourceNode = ctx.createBufferSource();
 	sourceNode.loop = true;
-	sourceNode.buffer = new AudioBuffer(2, pcm.defaults.samplesPerFrame);
+	sourceNode.buffer = new AudioBuffer(2, pcm.defaults.samplesPerFrame, {context: ctx});
 	sourceNode.start();
 	var scriptNode = ctx.createScriptProcessor(pcm.defaults.samplesPerFrame);
 	scriptNode.onaudioprocess = function (e) {
@@ -198,23 +198,27 @@ t('throttle source', function (t) {
 
 });
 
-t.only('pipe to non-object stream', function (t) {
+t('pipe to non-object stream', function (t) {
 	// this.timeout(false);
 
 	var count = 0;
 
 	var stream = Through(function (input) {
-		// console.log('Generated', this.time);
+		// console.log('Generated', input.length);
 		input.time = this.time;
 	})
 	.pipe(Stream.PassThrough({
+		// objectMode: true,
 		highWaterMark: 0
 	}))
 	.pipe(Through(function (input, done) {
-		// console.log('Received', input.time);
+		// console.log('Received', input.length);
 		count++;
 
-		if (this.count > 3000) this.end();
+		if (this.count > 3000) {
+			// console.log(this.count)
+			this.end();
+		}
 
 		done();
 	}))
@@ -253,7 +257,7 @@ t('throttle destination', function (t) {
 	});
 });
 
-t('beforeProcess, afterProcess hooks', function () {
+t.skip('beforeProcess, afterProcess hooks', function () {
 
 });
 
@@ -378,7 +382,7 @@ t.skip('convert pcm format', function (t) {
 });
 
 
-t('through-to-through', function () {
+t('through-to-through', function (t) {
 	Through(function () {
 		if (this.time > 0.1) {
 			return null;
@@ -393,10 +397,11 @@ t('through-to-through', function () {
 			setTimeout(cb, 0);
 		}
 	}))
+	setTimeout(t.end, 100)
 });
 
 
-t('various frame size', function () {
+t('various frame size', function (t) {
 	Through(function () {
 		if (this.time > 0.2) {
 			return null;
@@ -404,6 +409,7 @@ t('various frame size', function () {
 	}, {
 		samplesPerFrame: 512
 	})
+	.on('end', t.end)
 	.pipe(Through(
 		function (chunk) {
 		}
@@ -438,7 +444,6 @@ t('sync error', t => {
 	}).on('error', function (e) {
 		assert(e.message == 123);
 		this.end();
-		t.end();
 	}).pipe(Through());
 
 	Through(b => {
@@ -446,6 +451,7 @@ t('sync error', t => {
 	}).on('error', function (e) {
 		assert(e.message == 123);
 		this.end();
-		t.end();
 	}).pipe(Through());
+
+	setTimeout(t.end, 10)
 });
