@@ -31,7 +31,7 @@
     "audio-sink": "^1.0.1",
     "audio-speaker": "latest",
     "is-browser": "^2.0.1",
-    "stream-sink": "^1.2.0",
+    "stream-sink": "^2.0.0",
     "tape": "^4.6.3",
     "web-audio-stream": "^2.0.3"
   },
