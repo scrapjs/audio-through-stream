@@ -1,5 +1,7 @@
 # audio-through [![Build Status](https://travis-ci.org/audiojs/audio-through.svg?branch=master)](https://travis-ci.org/audiojs/audio-through) [![stable](http://badges.github.io/stability-badges/dist/stable.svg)](http://github.com/badges/stability-badges)
 
+[![Greenkeeper badge](https://badges.greenkeeper.io/audiojs/audio-through.svg)](https://greenkeeper.io/)
+
 Through stream for audio processing.
 
 * Compatible with PCM streams (node streams).
