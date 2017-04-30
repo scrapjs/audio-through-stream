@@ -1,3 +1,5 @@
+'use strict'
+
 var Through = require('./');
 var ctx = require('audio-context')();
 var Sink = require('stream-sink');
