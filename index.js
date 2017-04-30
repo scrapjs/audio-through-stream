@@ -93,6 +93,8 @@ function Through (fn, options) {
 	//ensure format values are present on self
 	extend(self, self.format);
 
+	if (!self.context && context) self.context = context()
+
 	//manage input pipes number
 	self.on('pipe', function (source) {
 		self.inputsCount++;
@@ -192,7 +194,7 @@ Through.prototype.generator = undefined;
 Through.prototype.state = undefined;
 
 
-Through.prototype.context = context;
+Through.prototype.context;
 
 
 /**

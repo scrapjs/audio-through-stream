@@ -1,5 +1,5 @@
 var Through = require('./');
-var ctx = require('audio-context');
+var ctx = require('audio-context')();
 var Sink = require('stream-sink');
 var AudioBuffer = require('audio-buffer');
 var util = require('audio-buffer-utils');

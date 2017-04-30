@@ -36,10 +36,8 @@
     "web-audio-stream": "^3.0.1"
   },
   "dependencies": {
-    "array-find": "^1.0.0",
     "audio-buffer": "^3.1.1",
     "audio-context": "^1.0.0",
-    "get-uid": "^1.0.1",
     "inherits": "^2.0.1",
     "is-audio-buffer": "^1.0.1",
     "is-promise": "^2.1.0",
