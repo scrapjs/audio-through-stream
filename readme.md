@@ -87,7 +87,7 @@ Number of processed frames (chunks).
 
 Time of the beginning of the next chunk, in seconds.
 
-### `through.on(evt, function (buffer) {})`
+### `through.on(evt, function (buffer) {});`
 
 Bind hook to processing event: `beforeProcess` or `afterProcess`. You can perform additional buffer modifications, if required.
 
