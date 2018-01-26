@@ -1,5 +1,5 @@
 {
-  "name": "audio-through",
+  "name": "audio-through-stream",
   "version": "2.2.3",
   "description": "Stream for audio processing",
   "main": "index.js",
@@ -12,14 +12,11 @@
     "url": "https://github.com/audiojs/audio-through"
   },
   "keywords": [
-    "dsp",
     "audio",
-    "sound",
-    "fft",
-    "stft",
-    "dft"
+    "audiojs",
+    "sound"
   ],
-  "author": "Deema Yvanow <dfcreative@gmail.com>",
+  "author": "Dmitry Yvanov <df.creative@gmail.com>",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/audiojs/audio-through/issues"

@@ -1,3 +1,5 @@
+TODO: make it a separate package
+
 # audio-through [![Build Status](https://travis-ci.org/audiojs/audio-through.svg?branch=master)](https://travis-ci.org/audiojs/audio-through) [![stable](https://img.shields.io/badge/stability-stable-brightgreen.svg)](http://github.com/badges/stability-badges) [![Greenkeeper badge](https://badges.greenkeeper.io/audiojs/audio-through.svg)](https://greenkeeper.io/)
 
 Through stream for audio processing.
