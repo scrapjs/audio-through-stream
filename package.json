@@ -23,7 +23,7 @@
   },
   "homepage": "https://github.com/audiojs/audio-through",
   "devDependencies": {
-    "audio-buffer-utils": "^4.0.1",
+    "audio-buffer-utils": "^5.0.1",
     "audio-generator": "^2.0.9",
     "audio-sink": "^1.0.1",
     "audio-speaker": "latest",
