@@ -36,7 +36,7 @@
     "audio-buffer": "^3.1.1",
     "audio-context": "^1.0.0",
     "inherits": "^2.0.1",
-    "is-audio-buffer": "^1.0.1",
+    "is-audio-buffer": "^1.0.9",
     "is-promise": "^2.1.0",
     "object-assign": "^4.1.1",
     "pcm-util": "^2.0.1",
