@@ -33,7 +33,7 @@
     "web-audio-stream": "^3.0.1"
   },
   "dependencies": {
-    "audio-buffer": "^3.1.1",
+    "audio-buffer": "^4.0.0",
     "audio-context": "^1.0.0",
     "inherits": "^2.0.1",
     "is-audio-buffer": "^1.0.1",
